@@ -1,0 +1,17 @@
+Jane Smith
+
+EXPERIENCE
+
+Senior Software Engineer at Acme Corp
+January 2020 - Present
+- Built microservices using Python and FastAPI
+- Managed Kafka consumer groups for real-time data processing
+- Led team of 5 engineers
+
+Software Engineer at StartupXYZ
+June 2017 - December 2019
+- Full-stack development with React and Node.js
+- PostgreSQL database design and optimization
+
+SKILLS
+Python, FastAPI, Kafka, React, Node.js, PostgreSQL, Docker, Kubernetes, AWS
