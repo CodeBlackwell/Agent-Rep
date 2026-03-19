@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+logs/
+neo4j_data/
+*.egg-info/
