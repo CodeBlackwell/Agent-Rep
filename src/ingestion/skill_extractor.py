@@ -7,8 +7,8 @@ SKILL_PROMPT = (
 )
 
 
-def extract_skills(chunk: CodeChunk, nim_client) -> list[str]:
-    response = nim_client.chat([
+def extract_skills(chunk: CodeChunk, chat_client) -> list[str]:
+    response = chat_client.chat([
         {"role": "system", "content": SKILL_PROMPT},
         {"role": "user", "content": chunk.content},
     ])

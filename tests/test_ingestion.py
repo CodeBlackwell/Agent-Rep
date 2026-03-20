@@ -61,13 +61,16 @@ def test_build_graph(tmp_path):
     mock_neo4j.driver.session.return_value.__enter__ = MagicMock(return_value=mock_session)
     mock_neo4j.driver.session.return_value.__exit__ = MagicMock(return_value=False)
 
-    mock_nim = MagicMock()
-    mock_nim.embed.return_value = [[0.1] * 1024]
+    mock_embed = MagicMock()
+    mock_embed.embed.return_value = [[0.1] * 1024]
 
-    mock_haiku = MagicMock()
-    mock_haiku.classify.return_value = '{}'
+    mock_chat = MagicMock()
+    mock_chat_response = MagicMock()
+    mock_chat_response.choices = [MagicMock()]
+    mock_chat_response.choices[0].message.content = '{}'
+    mock_chat.chat.return_value = mock_chat_response
 
-    build_graph(tmp_path, mock_neo4j, mock_nim, mock_haiku)
+    build_graph(tmp_path, mock_neo4j, mock_embed, mock_chat)
 
     # Verify session was used to run Cypher
     assert mock_session.run.call_count >= 2  # At least repo + file + snippet nodes
@@ -78,11 +81,11 @@ def test_build_graph(tmp_path):
 def test_extract_skills():
     from src.ingestion.skill_extractor import extract_skills
 
-    mock_nim = MagicMock()
+    mock_chat = MagicMock()
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "FastAPI\nPydantic\nAsync Python"
-    mock_nim.chat.return_value = mock_response
+    mock_chat.chat.return_value = mock_response
 
     chunk = CodeChunk(
         content="async def get_users():\n    return await db.fetch_all()",
@@ -93,7 +96,7 @@ def test_extract_skills():
         name="get_users",
     )
 
-    skills = extract_skills(chunk, mock_nim)
+    skills = extract_skills(chunk, mock_chat)
     assert len(skills) == 3
     assert "FastAPI" in skills
     assert "Async Python" in skills
@@ -117,13 +120,13 @@ def test_parse_resume():
         "skills": ["Python", "FastAPI", "Kafka", "React"],
     }
 
-    mock_nim = MagicMock()
+    mock_chat = MagicMock()
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = json.dumps(structured)
-    mock_nim.chat.return_value = mock_response
+    mock_chat.chat.return_value = mock_response
 
-    parse_resume(FIXTURES / "sample_resume.txt", mock_neo4j, mock_nim)
+    parse_resume(FIXTURES / "sample_resume.txt", mock_neo4j, mock_chat)
 
     session = mock_neo4j.driver.session.return_value.__enter__.return_value
     assert session.run.call_count >= 3  # Engineer + roles + skills

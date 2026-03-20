@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 from src.core.neo4j_client import Neo4jClient
-from src.core.nim_client import NimClient
 
 MIN_SCORE = 0.3
 
@@ -33,8 +32,8 @@ def _compute_confidence(evidence: list[dict]) -> str:
     return "None"
 
 
-def match_requirement(requirement: str, neo4j_client: Neo4jClient, nim_client: NimClient) -> MatchResult:
-    embedding = nim_client.embed([requirement], input_type="query")[0]
+def match_requirement(requirement: str, neo4j_client: Neo4jClient, embed_client) -> MatchResult:
+    embedding = embed_client.embed([requirement], input_type="query")[0]
     results = neo4j_client.vector_search(embedding, top_k=5)
     evidence = []
     for r in results:

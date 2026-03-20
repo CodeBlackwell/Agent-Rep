@@ -11,6 +11,10 @@ class Settings:
     neo4j_user: str
     neo4j_password: str
     github_token: str
+    embed_provider: str
+    voyage_api_key: str
+    chat_provider: str
+    claude_model: str
 
     @classmethod
     def load(cls) -> "Settings":
@@ -22,4 +26,8 @@ class Settings:
             neo4j_user=os.getenv("NEO4J_USER", "neo4j"),
             neo4j_password=os.getenv("NEO4J_PASSWORD", "showmeoff"),
             github_token=os.getenv("GITHUB_TOKEN", ""),
+            embed_provider=os.getenv("EMBED_PROVIDER", "nim"),
+            voyage_api_key=os.getenv("VOYAGE_API_KEY", ""),
+            chat_provider=os.getenv("CHAT_PROVIDER", "nim"),
+            claude_model=os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514"),
         )

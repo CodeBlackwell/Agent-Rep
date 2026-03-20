@@ -6,13 +6,18 @@ from src.jd_match.matcher import MatchResult, match_requirement
 from src.jd_match.agent import JDMatchAgent, MatchReport
 
 
-def _mock_nim(chat_content="[]", embed_result=None):
+def _mock_chat(chat_content="[]"):
     client = MagicMock()
-    client.embed.return_value = [embed_result or [0.1] * 1024]
     response = MagicMock()
     response.choices = [MagicMock()]
     response.choices[0].message.content = chat_content
     client.chat.return_value = response
+    return client
+
+
+def _mock_embed(embed_result=None):
+    client = MagicMock()
+    client.embed.return_value = [embed_result or [0.1] * 1024]
     return client
 
 
@@ -24,9 +29,9 @@ def _mock_neo4j(vector_results=None):
 
 def test_parse_requirements():
     reqs = json.dumps(["Python 3+", "Kubernetes", "REST API design", "Python 3+"])
-    nim = _mock_nim(chat_content=reqs)
+    chat = _mock_chat(chat_content=reqs)
 
-    result = parse_requirements("We need a Python developer with K8s experience.", nim)
+    result = parse_requirements("We need a Python developer with K8s experience.", chat)
 
     assert isinstance(result, list)
     assert "Python 3+" in result
@@ -34,14 +39,14 @@ def test_parse_requirements():
     assert "REST API design" in result
     # Deduplication: "Python 3+" appears only once
     assert result.count("Python 3+") == 1
-    nim.chat.assert_called_once()
+    chat.chat.assert_called_once()
 
 
 def test_parse_requirements_markdown_fenced():
     fenced = '```json\n["React", "TypeScript"]\n```'
-    nim = _mock_nim(chat_content=fenced)
+    chat = _mock_chat(chat_content=fenced)
 
-    result = parse_requirements("Frontend role", nim)
+    result = parse_requirements("Frontend role", chat)
     assert result == ["React", "TypeScript"]
 
 
@@ -52,16 +57,16 @@ def test_match_requirement():
         {"props": {"file_path": "src/c.py", "start_line": 20, "end_line": 30, "content": "async def stream():"}, "score": 0.7},
     ]
     neo4j = _mock_neo4j(vector_results=vector_hits)
-    nim = _mock_nim()
+    embed = _mock_embed()
 
-    result = match_requirement("Python async programming", neo4j, nim)
+    result = match_requirement("Python async programming", neo4j, embed)
 
     assert isinstance(result, MatchResult)
     assert result.requirement == "Python async programming"
     assert result.confidence == "Strong"
     assert len(result.evidence) == 3
     assert result.evidence[0]["file_path"] == "src/a.py"
-    nim.embed.assert_called_once_with(["Python async programming"], input_type="query")
+    embed.embed.assert_called_once_with(["Python async programming"], input_type="query")
     neo4j.vector_search.assert_called_once()
 
 
@@ -69,18 +74,18 @@ def test_match_requirement_partial():
     neo4j = _mock_neo4j(vector_results=[
         {"props": {"file_path": "src/x.py", "start_line": 1, "end_line": 5, "content": "code"}, "score": 0.9},
     ])
-    nim = _mock_nim()
+    embed = _mock_embed()
 
-    result = match_requirement("Go concurrency", neo4j, nim)
+    result = match_requirement("Go concurrency", neo4j, embed)
     assert result.confidence == "Partial"
     assert len(result.evidence) == 1
 
 
 def test_match_requirement_none():
     neo4j = _mock_neo4j(vector_results=[])
-    nim = _mock_nim()
+    embed = _mock_embed()
 
-    result = match_requirement("Haskell monads", neo4j, nim)
+    result = match_requirement("Haskell monads", neo4j, embed)
     assert result.confidence == "None"
     assert len(result.evidence) == 0
 
@@ -101,11 +106,11 @@ def test_match_report():
         r.choices[0].message.content = content
         responses.append(r)
 
-    nim = _mock_nim()
-    nim.chat.side_effect = responses
-    nim.embed.return_value = [[0.1] * 1024]
+    chat = _mock_chat()
+    chat.chat.side_effect = responses
+    embed = _mock_embed()
 
-    agent = JDMatchAgent(neo4j, nim)
+    agent = JDMatchAgent(neo4j, chat, embed)
     report = agent.match("Looking for a Python Docker GraphQL developer")
 
     assert isinstance(report, MatchReport)

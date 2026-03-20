@@ -2,9 +2,7 @@ import json
 import re
 from typing import Generator
 
-from src.core.haiku_client import HaikuClient
 from src.core.neo4j_client import Neo4jClient
-from src.core.nim_client import NimClient
 from src.qa.tools import search_code, get_evidence, search_resume, find_gaps, get_repo_overview, get_connected_evidence
 from src.ui.competency_map import get_subgraph
 
@@ -209,10 +207,10 @@ CURATE_PROMPT = (
 
 
 class QAAgent:
-    def __init__(self, neo4j_client: Neo4jClient, nim_client: NimClient, haiku_client: HaikuClient | None = None):
+    def __init__(self, neo4j_client: Neo4jClient, chat_client, embed_client):
         self.neo4j = neo4j_client
-        self.nim = nim_client
-        self.haiku = haiku_client
+        self.chat = chat_client
+        self.embed = embed_client
         self.system_prompt = self._resolve_prompt()
 
     def _resolve_prompt(self) -> str:
@@ -244,9 +242,9 @@ class QAAgent:
 
     def _execute_tool(self, name: str, args: dict) -> str:
         dispatch = {
-            "search_code": lambda: search_code(args["query"], self.neo4j, self.nim),
+            "search_code": lambda: search_code(args["query"], self.neo4j, self.embed),
             "get_evidence": lambda: get_evidence(args["skill_name"], self.neo4j),
-            "search_resume": lambda: search_resume(args["query"], self.neo4j, self.nim),
+            "search_resume": lambda: search_resume(args["query"], self.neo4j),
             "find_gaps": lambda: find_gaps(args["skills_csv"], self.neo4j),
             "get_repo_overview": lambda: get_repo_overview(args["repo_name"], self.neo4j),
             "get_connected_evidence": lambda: get_connected_evidence(args["skill_name"], args["repo_name"], self.neo4j),
@@ -299,7 +297,7 @@ class QAAgent:
             pass
 
     def _annotate_evidence(self, question: str, evidence: list[dict]) -> list[str] | None:
-        if not self.haiku or not evidence:
+        if not evidence:
             return None
         snippets = []
         for i, e in enumerate(evidence):
@@ -308,7 +306,11 @@ class QAAgent:
             snippets.append(f"{i + 1}. {fp}\n{preview}")
         user_msg = f"Question: {question}\n\nSnippets:\n" + "\n\n".join(snippets)
         try:
-            raw = _strip_think(self.haiku.classify(ANNOTATE_PROMPT, user_msg))
+            response = self.chat.chat([
+                {"role": "system", "content": ANNOTATE_PROMPT},
+                {"role": "user", "content": user_msg},
+            ])
+            raw = _strip_think(response.choices[0].message.content)
             raw = re.sub(r"^```\w*\n|```$", "", raw.strip())
             return json.loads(raw)
         except (json.JSONDecodeError, Exception):
@@ -318,14 +320,6 @@ class QAAgent:
         """Select the most impressive evidence and assign display modes (inline/link)."""
         if not evidence:
             return [], None
-        client = self.haiku
-        if not client:
-            # Fall back to simple annotation-style behavior
-            shown = evidence[:MAX_EVIDENCE_SHOWN]
-            annotations = self._annotate_evidence(question, shown)
-            if annotations:
-                return shown, [{"mode": "inline", "explanation": a} for a in annotations]
-            return shown, None
 
         summaries = []
         for i, e in enumerate(evidence):
@@ -340,7 +334,11 @@ class QAAgent:
         user_msg = f"Question: {question}\n\nSnippets:\n\n" + "\n\n".join(summaries)
 
         try:
-            raw = _strip_think(client.classify(CURATE_PROMPT, user_msg))
+            response = self.chat.chat([
+                {"role": "system", "content": CURATE_PROMPT},
+                {"role": "user", "content": user_msg},
+            ])
+            raw = _strip_think(response.choices[0].message.content)
             raw = re.sub(r"^```\w*\n|```$", "", raw.strip())
             parsed = json.loads(raw)
             # Filter to keeps, map back to evidence items
@@ -380,7 +378,7 @@ class QAAgent:
         all_evidence = []
 
         for _ in range(MAX_TOOL_CALLS):
-            response = self.nim.chat(messages, tools=TOOL_DEFINITIONS)
+            response = self.chat.chat(messages, tools=TOOL_DEFINITIONS)
             choice = response.choices[0]
             if not choice.message.tool_calls:
                 sorted_ev = _sort_evidence(all_evidence)
@@ -392,7 +390,7 @@ class QAAgent:
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": result[:MAX_TOOL_RESULT_CHARS]})
                 self._collect_evidence(result, all_evidence)
 
-        response = self.nim.chat(messages)
+        response = self.chat.chat(messages)
         sorted_ev = _sort_evidence(all_evidence)
         curated, curation_meta = self._curate_evidence(question, sorted_ev)
         return format_response(_strip_think(response.choices[0].message.content or ""), curated, curation=curation_meta, total_count=len(all_evidence))
@@ -406,7 +404,7 @@ class QAAgent:
         entities: set[str] = set()
 
         for _ in range(MAX_TOOL_CALLS):
-            response = self.nim.chat(messages, tools=TOOL_DEFINITIONS)
+            response = self.chat.chat(messages, tools=TOOL_DEFINITIONS)
             choice = response.choices[0]
             if not choice.message.tool_calls:
                 break
@@ -419,7 +417,7 @@ class QAAgent:
                 self._collect_evidence(result, all_evidence)
                 self._collect_entities(tc.function.name, args, result, entities)
         else:
-            response = self.nim.chat(messages)
+            response = self.chat.chat(messages)
             choice = response.choices[0]
 
         if entities:

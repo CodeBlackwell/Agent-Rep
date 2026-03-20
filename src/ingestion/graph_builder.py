@@ -21,7 +21,7 @@ def build_preamble(name, language, file_path, repo_name, skills):
     return "\n".join(parts)
 
 
-def build_graph(repo_path, neo4j_client, nim_client, haiku_client):
+def build_graph(repo_path, neo4j_client, embed_client, chat_client):
     repo_path = Path(repo_path)
     repo_name = repo_path.name
     file_count = 0
@@ -45,22 +45,23 @@ def build_graph(repo_path, neo4j_client, nim_client, haiku_client):
             if not chunks:
                 continue
 
-            # Skip file if all chunks already embedded
+            # Skip file if all chunks already embedded for this provider
+            embed_prop = neo4j_client.embed_property
             existing = session.run(
-                "MATCH (cs:CodeSnippet {file_path: $fp}) WHERE cs.embedding IS NOT NULL "
+                f"MATCH (cs:CodeSnippet {{file_path: $fp}}) WHERE cs.{embed_prop} IS NOT NULL "
                 "RETURN count(cs) AS c",
                 fp=rel_path,
             ).single()["c"]
             if existing >= len(chunks):
                 file_count += 1
                 # Still classify skills for existing chunks
-                skills_per_chunk = classify_chunks(chunks, haiku_client)
+                skills_per_chunk = classify_chunks(chunks, chat_client)
                 for chunk, chunk_skills in zip(chunks, skills_per_chunk):
                     _link_chunk_skills(session, chunk, rel_path, chunk_skills, repo_path)
                 continue
 
             # Classify first so skills are available for preamble
-            skills_per_chunk = classify_chunks(chunks, haiku_client)
+            skills_per_chunk = classify_chunks(chunks, chat_client)
 
             # Embed with contextual preamble
             texts = [
@@ -68,15 +69,15 @@ def build_graph(repo_path, neo4j_client, nim_client, haiku_client):
                 + "\nCode:\n" + c.content
                 for c, skills in zip(chunks, skills_per_chunk)
             ]
-            embeddings = nim_client.embed(texts)
+            embeddings = embed_client.embed(texts)
 
             for chunk, embedding, chunk_skills in zip(chunks, embeddings, skills_per_chunk):
                 session.run(
                     "MATCH (f:File {path: $file_path}) "
                     "MERGE (cs:CodeSnippet {name: $name, file_path: $file_path}) "
                     "SET cs.content = $content, cs.start_line = $start, "
-                    "    cs.end_line = $end, cs.language = $lang, "
-                    "    cs.embedding = $embedding "
+                    f"    cs.end_line = $end, cs.language = $lang, "
+                    f"    cs.{embed_prop} = $embedding "
                     "MERGE (f)-[:CONTAINS]->(cs)",
                     file_path=rel_path, name=chunk.name,
                     content=chunk.content, start=chunk.start_line,

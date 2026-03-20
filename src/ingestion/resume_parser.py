@@ -18,11 +18,11 @@ def _read_file(file_path: Path) -> str:
     return file_path.read_text(encoding="utf-8", errors="replace")
 
 
-def parse_resume(file_path, neo4j_client, nim_client):
+def parse_resume(file_path, neo4j_client, chat_client):
     path = Path(file_path)
     text = _read_file(path)
 
-    response = nim_client.chat([
+    response = chat_client.chat([
         {"role": "system", "content": RESUME_PROMPT},
         {"role": "user", "content": text},
     ])

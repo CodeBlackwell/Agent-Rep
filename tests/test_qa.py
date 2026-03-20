@@ -50,7 +50,12 @@ def _mock_neo4j():
     return client
 
 
-def _mock_nim():
+def _mock_chat():
+    client = MagicMock()
+    return client
+
+
+def _mock_embed():
     client = MagicMock()
     client.embed.return_value = [[0.1] * 1024]
     return client
@@ -74,13 +79,13 @@ def _make_tool_call(name, arguments, call_id="call_1"):
 
 def test_search_tools():
     neo4j = _mock_neo4j()
-    nim = _mock_nim()
+    embed = _mock_embed()
 
-    results = search_code("python async", neo4j, nim)
+    results = search_code("python async", neo4j, embed)
     assert len(results) == 2
     assert results[0]["file_path"] == "src/main.py"
     assert results[0]["score"] == 0.95
-    nim.embed.assert_called_once_with(["python async"], input_type="query")
+    embed.embed.assert_called_once_with(["python async"], input_type="query")
     neo4j.vector_search.assert_called_once()
 
     results = get_evidence("Python", neo4j)
@@ -88,7 +93,7 @@ def test_search_tools():
     assert results[0]["file_path"] == "src/app.py"
     neo4j.get_skill_evidence.assert_called_once_with("Python")
 
-    results = search_resume("Chris", neo4j, nim)
+    results = search_resume("Chris", neo4j)
     assert len(results) == 1
     assert results[0]["labels"] == ["Engineer"]
     assert results[0]["name"] == "Chris"
@@ -96,41 +101,45 @@ def test_search_tools():
 
 def test_react_loop():
     neo4j = _mock_neo4j()
-    nim = _mock_nim()
+    chat = _mock_chat()
+    embed = _mock_embed()
 
     tool_response = _make_chat_response(
         tool_calls=[_make_tool_call("search_code", {"query": "python"})]
     )
     final_response = _make_chat_response(content="The engineer demonstrates Python skills.")
 
-    nim.chat = MagicMock(side_effect=[tool_response, final_response])
+    chat.chat = MagicMock(side_effect=[tool_response, final_response])
 
-    agent = QAAgent(neo4j, nim)
+    agent = QAAgent(neo4j, chat, embed)
     result = agent.answer("Does this engineer know Python?")
 
     assert "The engineer demonstrates Python skills." in result
-    assert nim.chat.call_count == 2
-    first_call_kwargs = nim.chat.call_args_list[0]
+    # 2 ReAct calls + curate/annotate calls
+    assert chat.chat.call_count >= 2
+    first_call_kwargs = chat.chat.call_args_list[0]
     tools_arg = first_call_kwargs[0][1] if len(first_call_kwargs[0]) > 1 else first_call_kwargs[1].get("tools")
     assert tools_arg is not None
 
 
 def test_react_loop_max_calls():
     neo4j = _mock_neo4j()
-    nim = _mock_nim()
+    chat = _mock_chat()
+    embed = _mock_embed()
 
     tool_resp = _make_chat_response(
         tool_calls=[_make_tool_call("search_code", {"query": "test"}, f"call_1")]
     )
     final_resp = _make_chat_response(content="Final answer after max calls.")
 
-    nim.chat = MagicMock(side_effect=[tool_resp, tool_resp, tool_resp, tool_resp, final_resp])
+    chat.chat = MagicMock(side_effect=[tool_resp, tool_resp, tool_resp, tool_resp, final_resp])
 
-    agent = QAAgent(neo4j, nim)
+    agent = QAAgent(neo4j, chat, embed)
     result = agent.answer("complex question")
 
     assert "Final answer after max calls." in result
-    assert nim.chat.call_count == 5
+    # 5 ReAct calls + curate/annotate calls
+    assert chat.chat.call_count >= 5
 
 
 def test_response_formatting():
@@ -173,16 +182,17 @@ def test_response_formatting_with_curation():
 
 def test_streaming():
     neo4j = _mock_neo4j()
-    nim = _mock_nim()
+    chat = _mock_chat()
+    embed = _mock_embed()
 
     tool_response = _make_chat_response(
         tool_calls=[_make_tool_call("search_code", {"query": "python"})]
     )
     final_response = _make_chat_response(content="Streaming answer.")
 
-    nim.chat = MagicMock(side_effect=[tool_response, final_response])
+    chat.chat = MagicMock(side_effect=[tool_response, final_response])
 
-    agent = QAAgent(neo4j, nim)
+    agent = QAAgent(neo4j, chat, embed)
     chunks = list(agent.answer_stream("Does this engineer know Python?"))
 
     assert any("Searching for:" in c for c in chunks if isinstance(c, str))
@@ -192,8 +202,9 @@ def test_streaming():
 
 def test_skill_inventory_in_prompt():
     neo4j = _mock_neo4j()
-    nim = _mock_nim()
-    agent = QAAgent(neo4j, nim)
+    chat = _mock_chat()
+    embed = _mock_embed()
+    agent = QAAgent(neo4j, chat, embed)
     assert "LLM Integration" in agent.system_prompt
     assert "extensive" in agent.system_prompt
     assert "FastAPI" in agent.system_prompt
@@ -228,8 +239,9 @@ def test_connected_evidence_tool():
 
 def test_dispatch_new_tools():
     neo4j = _mock_neo4j()
-    nim = _mock_nim()
-    agent = QAAgent(neo4j, nim)
+    chat = _mock_chat()
+    embed = _mock_embed()
+    agent = QAAgent(neo4j, chat, embed)
 
     result = json.loads(agent._execute_tool("get_repo_overview", {"repo_name": "Agent_Blackwell"}))
     assert result["name"] == "Agent_Blackwell"
@@ -242,14 +254,17 @@ def test_dispatch_new_tools():
 
 def test_curate_evidence():
     neo4j = _mock_neo4j()
-    nim = _mock_nim()
-    haiku = MagicMock()
-    haiku.classify.return_value = json.dumps([
+    chat = _mock_chat()
+    embed = _mock_embed()
+
+    # Mock chat.chat() to return OpenAI-shaped response for curation
+    curation_response = _make_chat_response(content=json.dumps([
         {"index": 0, "action": "keep", "mode": "inline", "explanation": "Impressive orchestration"},
         {"index": 1, "action": "drop", "mode": "inline", "explanation": ""},
-    ])
+    ]))
+    chat.chat = MagicMock(return_value=curation_response)
 
-    agent = QAAgent(neo4j, nim, haiku)
+    agent = QAAgent(neo4j, chat, embed)
     evidence = [
         {"file_path": "a.py", "content": "class Orchestrator:", "repo": "proj"},
         {"file_path": "b.py", "content": "x = 1", "repo": "proj"},

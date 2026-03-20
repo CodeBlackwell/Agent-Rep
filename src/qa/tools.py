@@ -1,12 +1,11 @@
 from src.core.neo4j_client import Neo4jClient
-from src.core.nim_client import NimClient
 from src.ingestion.skill_taxonomy import SKILL_HIERARCHY
 
 MIN_SCORE = 0.3
 
 
-def search_code(query: str, neo4j_client: Neo4jClient, nim_client: NimClient) -> list[dict]:
-    embedding = nim_client.embed([query], input_type="query")[0]
+def search_code(query: str, neo4j_client: Neo4jClient, embed_client) -> list[dict]:
+    embedding = embed_client.embed([query], input_type="query")[0]
     results = neo4j_client.vector_search(embedding, top_k=10)
     return [
         {
@@ -118,7 +117,7 @@ def get_connected_evidence(skill_name: str, repo_name: str, neo4j_client: Neo4jC
     ]
 
 
-def search_resume(query: str, neo4j_client: Neo4jClient, nim_client: NimClient) -> list[dict]:
+def search_resume(query: str, neo4j_client: Neo4jClient) -> list[dict]:
     cypher = (
         "MATCH (n) WHERE n:Engineer "
         "WITH n, [key IN keys(n) WHERE key <> 'embedding' | toString(n[key])] AS vals "

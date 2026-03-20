@@ -1,9 +1,16 @@
 from neo4j import GraphDatabase
 
+EMBED_PROVIDERS = ("nim", "voyage")
+
 
 class Neo4jClient:
-    def __init__(self, uri: str, user: str, password: str):
+    def __init__(self, uri: str, user: str, password: str, embed_provider: str = "nim"):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        if embed_provider not in EMBED_PROVIDERS:
+            raise ValueError(f"embed_provider must be one of {EMBED_PROVIDERS}, got '{embed_provider}'")
+        self.embed_provider = embed_provider
+        self.embed_property = f"embedding_{embed_provider}"
+        self.vector_index = f"code_embedding_{embed_provider}"
 
     def init_schema(self):
         with self.driver.session() as session:
@@ -11,11 +18,14 @@ class Neo4jClient:
                 session.run(
                     f"CREATE CONSTRAINT IF NOT EXISTS FOR (n:{label}) REQUIRE n.name IS UNIQUE"
                 )
-            session.run(
-                "CREATE VECTOR INDEX code_embedding IF NOT EXISTS "
-                "FOR (n:CodeSnippet) ON (n.embedding) "
-                "OPTIONS {indexConfig: {`vector.dimensions`: 1024, `vector.similarity_function`: 'cosine'}}"
-            )
+            for provider in EMBED_PROVIDERS:
+                prop = f"embedding_{provider}"
+                idx = f"code_embedding_{provider}"
+                session.run(
+                    f"CREATE VECTOR INDEX {idx} IF NOT EXISTS "
+                    f"FOR (n:CodeSnippet) ON (n.{prop}) "
+                    "OPTIONS {indexConfig: {`vector.dimensions`: 1024, `vector.similarity_function`: 'cosine'}}"
+                )
 
     def ensure_taxonomy(self, taxonomy: dict):
         with self.driver.session() as session:
@@ -75,7 +85,7 @@ class Neo4jClient:
 
     def vector_search(self, embedding: list[float], top_k: int = 5) -> list[dict]:
         query = (
-            "CALL db.index.vector.queryNodes('code_embedding', $top_k, $embedding) "
+            f"CALL db.index.vector.queryNodes('{self.vector_index}', $top_k, $embedding) "
             "YIELD node, score "
             "OPTIONAL MATCH (r:Repository)-[:CONTAINS]->(:File)-[:CONTAINS]->(node) "
             "OPTIONAL MATCH (node)-[:DEMONSTRATES]->(sk:Skill) "

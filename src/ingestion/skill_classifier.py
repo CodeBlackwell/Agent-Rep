@@ -1,11 +1,13 @@
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from src.core.haiku_client import HaikuClient
+from src.core.claude_chat_client import ClaudeChatClient
 from src.ingestion.skill_taxonomy import ALL_SKILLS
 
 BATCH_SIZE = 20
-CONCURRENCY = 2
+# Anthropic Tier 2+ can handle 1,000 RPM; NIM free tier caps at ~40 RPM.
+CONCURRENCY_ANTHROPIC = 4
+CONCURRENCY_NIM = 2
 SECTION_LINES = 150
 OVERLAP_LINES = 30  # shared context between sections
 ALL_SKILLS_SET = set(ALL_SKILLS)
@@ -31,19 +33,20 @@ def _split_with_overlap(content: str) -> list[str]:
     return sections
 
 
-def classify_chunks(chunks, haiku: HaikuClient) -> list[set[str]]:
+def classify_chunks(chunks, chat_client) -> list[set[str]]:
     batches = [chunks[i:i + BATCH_SIZE] for i in range(0, len(chunks), BATCH_SIZE)]
     results = [None] * len(batches)
+    concurrency = CONCURRENCY_ANTHROPIC if isinstance(chat_client, ClaudeChatClient) else CONCURRENCY_NIM
 
-    with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
-        futures = {pool.submit(_classify_batch_full, b, haiku): idx for idx, b in enumerate(batches)}
+    with ThreadPoolExecutor(max_workers=concurrency) as pool:
+        futures = {pool.submit(_classify_batch_full, b, chat_client): idx for idx, b in enumerate(batches)}
         for future in as_completed(futures):
             results[futures[future]] = future.result()
 
     return [skill for batch_result in results for skill in batch_result]
 
 
-def _classify_batch_full(chunks, haiku: HaikuClient) -> list[set[str]]:
+def _classify_batch_full(chunks, chat_client) -> list[set[str]]:
     """Classify a batch. Large snippets get split into overlapping sections, skills merged."""
     sections = []  # (chunk_index, section_text)
     for i, c in enumerate(chunks):
@@ -54,14 +57,14 @@ def _classify_batch_full(chunks, haiku: HaikuClient) -> list[set[str]]:
     section_batches = [sections[j:j + BATCH_SIZE] for j in range(0, len(sections), BATCH_SIZE)]
 
     for sbatch in section_batches:
-        batch_skills = _call_haiku(sbatch, chunks, haiku)
+        batch_skills = _call_classifier(sbatch, chunks, chat_client)
         for (chunk_idx, _), skills in zip(sbatch, batch_skills):
             per_chunk_skills[chunk_idx] |= skills
 
     return per_chunk_skills
 
 
-def _call_haiku(sections, chunks, haiku: HaikuClient) -> list[set[str]]:
+def _call_classifier(sections, chunks, chat_client) -> list[set[str]]:
     snippet_text = "\n\n".join(
         f"[{i}] ({chunks[idx].file_path if hasattr(chunks[idx], 'file_path') else ''}):\n{text}"
         for i, (idx, text) in enumerate(sections)
@@ -72,7 +75,11 @@ def _call_haiku(sections, chunks, haiku: HaikuClient) -> list[set[str]]:
         "Return JSON: {{\"0\": [\"Skill1\", ...], \"1\": [...], ...}}"
     )
     try:
-        raw = haiku.classify(CLASSIFY_SYSTEM, user_prompt)
+        response = chat_client.chat([
+            {"role": "system", "content": CLASSIFY_SYSTEM},
+            {"role": "user", "content": user_prompt},
+        ])
+        raw = response.choices[0].message.content
         if "```" in raw:
             raw = raw.split("```")[1]
             if raw.startswith("json"):

@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 from src.config.settings import Settings
-from src.core import HaikuClient, Neo4jClient, NimClient
+from src.core.client_factory import build_clients
 from src.ingestion.graph_builder import build_graph
 from src.ingestion.resume_parser import parse_resume
 from src.ingestion.skill_taxonomy import TAXONOMY
@@ -51,9 +51,10 @@ def fetch_github_repos(username: str, token: str = "") -> list[str]:
 
 def ingest(resume_path: str, repo_sources: list[str], github_user: str = ""):
     settings = Settings.load()
-    neo4j_client = Neo4jClient(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password)
-    nim_client = NimClient(settings.nvidia_api_key)
-    haiku_client = HaikuClient(settings.anthropic_api_key)
+    clients = build_clients(settings)
+    neo4j_client = clients["neo4j_client"]
+    embed_client = clients["embed_client"]
+    chat_client = clients["ingestion_chat_client"]
     token = settings.github_token
 
     neo4j_client.init_schema()
@@ -66,7 +67,7 @@ def ingest(resume_path: str, repo_sources: list[str], github_user: str = ""):
         engineer_name = existing["name"]
         print(f"Engineer (cached): {engineer_name}")
     else:
-        engineer_name = parse_resume(resume_path, neo4j_client, nim_client)
+        engineer_name = parse_resume(resume_path, neo4j_client, chat_client)
         print(f"Engineer: {engineer_name}")
 
     sources = list(repo_sources)
@@ -82,7 +83,7 @@ def ingest(resume_path: str, repo_sources: list[str], github_user: str = ""):
                 repo_path = clone_repo(source, token)
             else:
                 repo_path = Path(source)
-            build_graph(repo_path, neo4j_client, nim_client, haiku_client)
+            build_graph(repo_path, neo4j_client, embed_client, chat_client)
             # Link engineer to repo
             with neo4j_client.driver.session() as session:
                 session.run(
