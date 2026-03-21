@@ -54,6 +54,7 @@ form.addEventListener('submit', e => {
     url += `&fp=${encodeURIComponent(window.__fp)}`;
   }
 
+  if (window.resetGraph) window.resetGraph();
   const source = new EventSource(url);
 
   source.addEventListener('session', event => {

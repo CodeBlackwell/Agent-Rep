@@ -551,6 +551,11 @@ class QAAgent:
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": result[:MAX_TOOL_RESULT_CHARS]})
                 self._collect_evidence(result, all_evidence)
                 self._collect_entities(tc.function.name, args, result, entities)
+                # Emit intermediate subgraph for progressive reveal
+                if entities:
+                    intermediate = build_query_subgraph(self.neo4j, entities)
+                    if intermediate["nodes"]:
+                        yield intermediate
         else:
             logger.info("agent.react_done", step=MAX_TOOL_CALLS, reason="max_calls_reached")
             response = self.chat.chat(messages, purpose="react_final")

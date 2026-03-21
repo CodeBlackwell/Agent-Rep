@@ -1,0 +1,12 @@
+.git
+.venv
+.env
+__pycache__
+*.pyc
+logs/
+data/
+dump/
+repos/
+neo4j_data/
+.pytest_cache
+*.egg-info

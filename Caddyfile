@@ -1,0 +1,21 @@
+# Replace with your domain — Caddy auto-provisions HTTPS via Let's Encrypt
+{$DOMAIN:localhost} {
+	reverse_proxy app:7860
+
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Gzip
+	encode gzip
+
+	# Access log
+	log {
+		output file /data/access.log
+		format json
+	}
+}
