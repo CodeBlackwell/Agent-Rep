@@ -6,7 +6,7 @@ MIN_SCORE = 0.3
 
 def search_code(query: str, neo4j_client: Neo4jClient, embed_client) -> list[dict]:
     embedding = embed_client.embed([query], input_type="query")[0]
-    results = neo4j_client.vector_search(embedding, top_k=10)
+    results = neo4j_client.vector_search(embedding, top_k=25)
     return [
         {
             "file_path": r["props"].get("file_path", ""),

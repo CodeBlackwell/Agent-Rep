@@ -84,16 +84,23 @@ class Neo4jClient:
             return dict(record) if record else None
 
     def vector_search(self, embedding: list[float], top_k: int = 5) -> list[dict]:
+        # Fetch extra candidates so test-file demotion doesn't starve results
         query = (
-            f"CALL db.index.vector.queryNodes('{self.vector_index}', $top_k, $embedding) "
+            f"CALL db.index.vector.queryNodes('{self.vector_index}', $fetch_k, $embedding) "
             "YIELD node, score "
             "OPTIONAL MATCH (r:Repository)-[:CONTAINS]->(:File)-[:CONTAINS]->(node) "
             "OPTIONAL MATCH (node)-[:DEMONSTRATES]->(sk:Skill) "
-            "RETURN properties(node) AS props, score, r.name AS repo, "
-            "r.private AS private, collect(DISTINCT sk.name) AS skills"
+            "WITH node, score, r, collect(DISTINCT sk.name) AS skills "
+            "WITH properties(node) AS props, skills, score, r, "
+            "CASE WHEN node.file_path =~ '.*(?i)(test_|_test\\\\.|spec\\\\.|/tests?/).*' "
+            "THEN score * 0.7 ELSE score END AS adjusted_score "
+            "RETURN props, adjusted_score AS score, r.name AS repo, "
+            "r.private AS private, skills "
+            "ORDER BY adjusted_score DESC LIMIT $top_k"
         )
         with self.driver.session() as session:
-            result = session.run(query, embedding=embedding, top_k=top_k)
+            result = session.run(query, embedding=embedding, top_k=top_k,
+                                 fetch_k=top_k + 5)
             return [{"props": r["props"], "score": r["score"], "repo": r["repo"],
                      "private": bool(r["private"]), "skills": r["skills"]} for r in result]
 
