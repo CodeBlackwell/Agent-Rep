@@ -158,6 +158,29 @@ main {
   padding: 1rem;
 }
 
+/* Site credit */
+.site-credit {
+  position: fixed;
+  bottom: 0.6rem;
+  right: 3.2rem;
+  z-index: 2;
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  letter-spacing: 0.02em;
+}
+
+.site-credit a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.site-credit a:hover { text-decoration: underline; }
+
+.site-credit__heart { font-style: normal; }
+
+body.canvas-mode .site-credit { color: rgba(234, 213, 182, 0.6); }
+body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
+
 .left-col {
   flex: 0 0 30%;
   display: flex;
@@ -571,6 +594,72 @@ main {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
 }
+
+/* ── Rate-limit Modal ────────────────────────────── */
+
+.rate-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.rate-modal--open { display: flex; align-items: center; justify-content: center; }
+
+.rate-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(44, 44, 44, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.rate-modal__panel {
+  position: relative;
+  width: min(400px, 85vw);
+  background: rgba(250, 247, 242, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 205, 196, 0.45);
+  border-radius: 14px;
+  padding: 2rem 2rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.rate-modal__title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: var(--ink);
+  margin-bottom: 0.6rem;
+}
+
+.rate-modal__text {
+  font-size: 0.88rem;
+  color: var(--ink-light);
+  line-height: 1.6;
+  margin-bottom: 0.4rem;
+}
+
+.rate-modal__timer {
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  margin-bottom: 1.2rem;
+}
+
+.rate-modal__btn {
+  padding: 0.5rem 1.8rem;
+  border: 1px solid var(--stone);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rate-modal__btn:hover { background: var(--bg); }
 
 /* ── Reference Index Modal ────────────────────────── */
 

@@ -46,8 +46,15 @@ def _visitor_id(request: Request, fp: str | None = None) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-def _check_limit(visitor_id: str, bucket: str) -> JSONResponse | None:
-    """Return a 429 response if rate limited, else None."""
+def _is_local(request: Request) -> bool:
+    ip = request.client.host if request.client else ""
+    return ip in ("127.0.0.1", "::1", "localhost")
+
+
+def _check_limit(visitor_id: str, bucket: str, request: Request | None = None) -> JSONResponse | None:
+    """Return a 429 response if rate limited, else None. Skips for localhost."""
+    if request and _is_local(request):
+        return None
     max_req, window = RATE_LIMITS[bucket]
     allowed, remaining = db.check_rate_limit(visitor_id, bucket, max_req, window)
     if not allowed:
@@ -72,7 +79,7 @@ def index(request: Request):
 @app.get("/api/chat")
 def chat(request: Request, q: str, session_id: str | None = None, fp: str | None = None):
     vid = _visitor_id(request, fp)
-    blocked = _check_limit(vid, "chat")
+    blocked = _check_limit(vid, "chat", request)
     if blocked:
         return blocked
 
@@ -125,7 +132,7 @@ def chat(request: Request, q: str, session_id: str | None = None, fp: str | None
 @app.get("/api/sessions")
 def list_sessions(request: Request, limit: int = 50, offset: int = 0):
     vid = _visitor_id(request)
-    blocked = _check_limit(vid, "read")
+    blocked = _check_limit(vid, "read", request)
     if blocked:
         return blocked
     return db.list_sessions(limit=limit, offset=offset)
@@ -134,7 +141,7 @@ def list_sessions(request: Request, limit: int = 50, offset: int = 0):
 @app.get("/api/sessions/{session_id}")
 def get_session(request: Request, session_id: str):
     vid = _visitor_id(request)
-    blocked = _check_limit(vid, "read")
+    blocked = _check_limit(vid, "read", request)
     if blocked:
         return blocked
     messages = db.get_session_history(session_id, limit=1000)
@@ -147,7 +154,7 @@ def get_session(request: Request, session_id: str):
 def query_logs(request: Request, session_id: str | None = None, event: str | None = None,
                level: str | None = None, limit: int = 100, offset: int = 0):
     vid = _visitor_id(request)
-    blocked = _check_limit(vid, "read")
+    blocked = _check_limit(vid, "read", request)
     if blocked:
         return blocked
     return db.query_logs(session_id=session_id, event=event, level=level,
@@ -161,7 +168,7 @@ def query_logs(request: Request, session_id: str | None = None, event: str | Non
 @app.get("/api/skills/{skill_name}/references")
 def skill_references(request: Request, skill_name: str):
     vid = _visitor_id(request)
-    blocked = _check_limit(vid, "read")
+    blocked = _check_limit(vid, "read", request)
     if blocked:
         return blocked
 

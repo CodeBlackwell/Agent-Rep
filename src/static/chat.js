@@ -4,6 +4,40 @@ const input = document.getElementById('chat-input');
 
 let sessionId = null;
 
+/* ── Rate-limit modal ──────────────────────────────────────── */
+
+let rateModal = null;
+
+function showRateLimitModal(retrySecs) {
+  if (!rateModal) {
+    rateModal = document.createElement('div');
+    rateModal.className = 'rate-modal';
+    rateModal.innerHTML =
+      '<div class="rate-modal__backdrop"></div>' +
+      '<div class="rate-modal__panel">' +
+        '<h2 class="rate-modal__title">Taking a breather</h2>' +
+        '<p class="rate-modal__text">You\u2019ve been asking great questions! ' +
+          'To keep things running smoothly, there\u2019s a short cooldown in effect.</p>' +
+        '<p class="rate-modal__timer"></p>' +
+        '<button class="rate-modal__btn">Got it</button>' +
+      '</div>';
+    document.body.appendChild(rateModal);
+    rateModal.querySelector('.rate-modal__backdrop').addEventListener('click', closeRateLimitModal);
+    rateModal.querySelector('.rate-modal__btn').addEventListener('click', closeRateLimitModal);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRateLimitModal(); });
+  }
+  const mins = Math.ceil((retrySecs || 3600) / 60);
+  rateModal.querySelector('.rate-modal__timer').textContent =
+    'Check back in about ' + mins + ' minute' + (mins !== 1 ? 's' : '') + '.';
+  rateModal.classList.add('rate-modal--open');
+}
+
+function closeRateLimitModal() {
+  if (rateModal) rateModal.classList.remove('rate-modal--open');
+}
+
+/* ── Markdown / messages ───────────────────────────────────── */
+
 function renderMarkdown(text) {
   return text
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
@@ -138,53 +172,77 @@ form.addEventListener('submit', e => {
   if (sessionId) url += `&session_id=${encodeURIComponent(sessionId)}`;
   if (window.__fp) url += `&fp=${encodeURIComponent(window.__fp)}`;
 
-  const source = new EventSource(url);
-
-  source.addEventListener('session', event => {
-    sessionId = JSON.parse(event.data).session_id;
-  });
-
-  source.addEventListener('graph', event => {
-    window.updateGraph(JSON.parse(event.data));
-  });
-
-  source.addEventListener('status', event => {
-    const data = JSON.parse(event.data);
-    if (data.phase === 'tool') {
-      toolCount++;
-      addStep(toolLabel(data.tool, data.args || {}));
-    } else if (data.phase === 'curating') {
-      addStep('Curating evidence…');
-    } else if (data.phase === 'answering') {
-      addStep('Composing answer…');
-    }
-    messages.scrollTop = messages.scrollHeight;
-  });
-
-  source.onmessage = event => {
-    if (event.data === '[DONE]') {
-      collapseStatus();
-      source.close();
-      input.disabled = false;
-      input.focus();
-      return;
-    }
-    if (loader.parentNode) loader.remove();
-    collapseStatus();
-    if (!assistantDiv) {
-      assistantDiv = addMessage('assistant', event.data);
-    } else {
-      assistantDiv.innerHTML = renderMarkdown(event.data);
-    }
-    messages.scrollTop = messages.scrollHeight;
-  };
-
-  source.onerror = () => {
-    source.close();
+  function cleanup() {
     if (elapsedTimer) clearInterval(elapsedTimer);
-    if (loader.parentNode) loader.remove();
-    if (!assistantDiv) addMessage('assistant', 'Connection lost. Please try again.');
     input.disabled = false;
     input.focus();
-  };
+  }
+
+  function dispatch(eventType, data) {
+    if (eventType === 'session') {
+      sessionId = JSON.parse(data).session_id;
+    } else if (eventType === 'graph') {
+      window.updateGraph(JSON.parse(data));
+    } else if (eventType === 'status') {
+      const d = JSON.parse(data);
+      if (d.phase === 'tool') { toolCount++; addStep(toolLabel(d.tool, d.args || {})); }
+      else if (d.phase === 'curating') addStep('Curating evidence\u2026');
+      else if (d.phase === 'answering') addStep('Composing answer\u2026');
+      messages.scrollTop = messages.scrollHeight;
+    } else {
+      if (data === '[DONE]') { collapseStatus(); cleanup(); return; }
+      if (loader.parentNode) loader.remove();
+      collapseStatus();
+      if (!assistantDiv) assistantDiv = addMessage('assistant', data);
+      else assistantDiv.innerHTML = renderMarkdown(data);
+      messages.scrollTop = messages.scrollHeight;
+    }
+  }
+
+  fetch(url).then(response => {
+    if (response.status === 429) {
+      if (loader.parentNode) loader.remove();
+      return response.json().then(data => {
+        showRateLimitModal(data.retry_after_seconds);
+        cleanup();
+      });
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    function processBlock(block) {
+      let eventType = 'message';
+      const dataLines = [];
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+        else if (line.startsWith('data: ')) dataLines.push(line.slice(6));
+        else if (line === 'data:') dataLines.push('');
+      }
+      if (dataLines.length) dispatch(eventType, dataLines.join('\n'));
+    }
+
+    function pump() {
+      return reader.read().then(({ done, value }) => {
+        if (done) {
+          if (buffer.trim()) processBlock(buffer);
+          collapseStatus();
+          cleanup();
+          return;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop();
+        for (const part of parts) { if (part.trim()) processBlock(part); }
+        return pump();
+      });
+    }
+
+    return pump();
+  }).catch(() => {
+    if (loader.parentNode) loader.remove();
+    if (!assistantDiv) addMessage('assistant', 'Connection lost. Please try again.');
+    cleanup();
+  });
 });
