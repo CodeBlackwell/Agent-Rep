@@ -1,8 +1,7 @@
-# Replace with your domain — Caddy auto-provisions HTTPS via Let's Encrypt
-{$DOMAIN:localhost} {
+# PROVE — portfolio AI agent
+prove.codeblackwell.ai {
 	reverse_proxy app:7860
 
-	# Security headers
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
@@ -10,12 +9,31 @@
 		-Server
 	}
 
-	# Gzip
 	encode gzip
 
-	# Access log
 	log {
 		output file /data/access.log
+		format json
+	}
+}
+
+# Personal site — React SPA served from /opt/portfolio
+codeblackwell.ai, www.codeblackwell.ai {
+	root * /srv/portfolio
+	file_server
+	try_files {path} /index.html
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	encode gzip
+
+	log {
+		output file /data/portfolio-access.log
 		format json
 	}
 }
