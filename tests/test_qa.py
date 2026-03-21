@@ -162,6 +162,52 @@ def test_response_formatting():
     assert "No evidence found" in result
 
 
+def test_private_code_hidden_by_default():
+    """Private repo snippets show link + context but never raw code."""
+    evidence = [
+        {"file_path": "src/secret.py", "start_line": 1, "end_line": 10,
+         "content": "def proprietary_algo():", "context": "Implements a proprietary algorithm",
+         "score": 0.9, "repo": "private-repo", "private": True},
+        {"file_path": "src/open.py", "start_line": 1, "end_line": 10,
+         "content": "def public_func():", "context": "Public utility",
+         "score": 0.8, "repo": "public-repo", "private": False},
+    ]
+    # Default: show_private_code=False
+    result = format_response("Answer.", evidence)
+    # Private snippet: context shown, code NOT shown
+    assert "Implements a proprietary algorithm" in result
+    assert "def proprietary_algo():" not in result
+    # Public snippet: code IS shown
+    assert "def public_func():" in result
+
+    # With show_private_code=True, private code IS shown
+    result = format_response("Answer.", evidence, show_private_code=True)
+    assert "def proprietary_algo():" in result
+
+
+def test_redact_private_strips_content():
+    """QAAgent._redact_private strips content from private evidence."""
+    neo4j = _mock_neo4j()
+    chat = _mock_chat()
+    embed = _mock_embed()
+    agent = QAAgent(neo4j, chat, embed, show_private_code=False)
+
+    items = [
+        {"content": "secret code", "private": True, "context": "description"},
+        {"content": "public code", "private": False, "context": "public desc"},
+        {"content": "also secret", "private": True},
+    ]
+    agent._redact_private(items)
+    assert items[0]["content"] == ""
+    assert items[1]["content"] == "public code"
+    assert items[2]["content"] == ""
+
+    # Non-list input is a no-op
+    single = {"content": "x", "private": True}
+    agent._redact_private(single)
+    assert single["content"] == "x"  # dict (not list) unchanged
+
+
 def test_response_formatting_with_curation():
     evidence = [
         {"file_path": "src/agent.py", "start_line": 1, "end_line": 50,

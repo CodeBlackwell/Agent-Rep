@@ -329,6 +329,13 @@ class QAAgent:
             lines.append(f"  {domain}: {skills_str}")
         return "\n".join(lines)
 
+    def _redact_private(self, result):
+        """Strip code content from private repo evidence so the model can't quote it."""
+        if isinstance(result, list):
+            for item in result:
+                if isinstance(item, dict) and item.get("private") and "content" in item:
+                    item["content"] = ""
+
     def _execute_tool(self, name: str, args: dict) -> str:
         t0 = time.perf_counter()
         dispatch = {
@@ -340,6 +347,8 @@ class QAAgent:
             "get_connected_evidence": lambda: get_connected_evidence(args["skill_name"], args["repo_name"], self.neo4j),
         }
         result = dispatch.get(name, lambda: {"error": f"Unknown tool: {name}"})()
+        if not self.show_private_code:
+            self._redact_private(result)
         serialized = json.dumps(result)
         latency = int((time.perf_counter() - t0) * 1000)
 
@@ -587,4 +596,4 @@ class QAAgent:
         yield {"_status": True, "phase": "curating"}
         curated, curation_meta = self._curate_evidence(question, sorted_ev)
         yield {"_status": True, "phase": "answering"}
-        yield format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), github_owner=self.github_owner)
+        yield format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), show_private_code=self.show_private_code, github_owner=self.github_owner)
