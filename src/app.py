@@ -1,10 +1,9 @@
 import json
 import time
 import uuid
-from collections import OrderedDict
 from pathlib import Path
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -15,6 +14,11 @@ from src.qa.agent import QAAgent
 
 settings = Settings.load()
 clients = build_clients(settings)
+db = clients["db"]
+
+# Attach SQLite as additional log sink (after DB is created)
+logger.attach_db(db)
+
 qa_agent = QAAgent(clients["neo4j_client"], clients["chat_client"], clients["embed_client"])
 
 logger.info("app.startup", chat_provider=settings.chat_provider,
@@ -25,26 +29,7 @@ base = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=base / "static"), name="static")
 templates = Jinja2Templates(directory=base / "templates")
 
-# ---------------------------------------------------------------------------
-# Conversation session store (in-memory, capped at 200 sessions via LRU eviction)
-# Each session stores condensed history: [{role, content}, ...] of user/assistant turns.
-# ---------------------------------------------------------------------------
-MAX_SESSIONS = 200
-MAX_HISTORY_TURNS = 20  # max user+assistant pairs kept per session
-
-_sessions: OrderedDict[str, list[dict]] = OrderedDict()
-
-
-def _get_or_create_session(session_id: str | None) -> tuple[str, list[dict]]:
-    """Return (session_id, history). Creates a new session if id is missing/unknown."""
-    if session_id and session_id in _sessions:
-        _sessions.move_to_end(session_id)
-        return session_id, _sessions[session_id]
-    new_id = session_id or uuid.uuid4().hex[:12]
-    _sessions[new_id] = []
-    if len(_sessions) > MAX_SESSIONS:
-        _sessions.popitem(last=False)
-    return new_id, _sessions[new_id]
+MAX_HISTORY_TURNS = 20
 
 
 @app.get("/")
@@ -57,18 +42,23 @@ def index(request: Request):
 
 @app.get("/api/chat")
 def chat(q: str, session_id: str | None = None):
-    sid, history = _get_or_create_session(session_id)
+    # Resolve or create session
+    if session_id and db.session_exists(session_id):
+        sid = session_id
+    else:
+        sid = session_id or uuid.uuid4().hex[:12]
+
+    # Load conversation history from DB
+    history = db.get_session_history(sid, limit=MAX_HISTORY_TURNS * 2)
 
     def generate():
         t0 = time.perf_counter()
-        log_sid = logger.start_session(query=q, source="api/chat")
+        logger.start_session(query=q, source="api/chat")
 
-        # Send session_id to client on first event so it can include it in follow-ups
         yield f"event: session\ndata: {json.dumps({'session_id': sid})}\n\n"
 
-        # Pass conversation history to agent
         assistant_text = ""
-        for chunk in qa_agent.answer_stream(q, history=list(history)):
+        for chunk in qa_agent.answer_stream(q, history=history):
             if isinstance(chunk, dict):
                 yield f"event: graph\ndata: {json.dumps(chunk)}\n\n"
             else:
@@ -77,21 +67,39 @@ def chat(q: str, session_id: str | None = None):
                 yield sse + "\n"
         yield "data: [DONE]\n\n"
 
-        # Store this turn in session history (condensed: just question + answer text)
-        # Strip evidence section from stored answer to save context space
+        # Persist this turn (answer without evidence section to save space)
         answer_for_history = assistant_text.split("\n**Evidence:**")[0].strip()
-        history.append({"role": "user", "content": q})
-        history.append({"role": "assistant", "content": answer_for_history})
-
-        # Cap history length
-        while len(history) > MAX_HISTORY_TURNS * 2:
-            history.pop(0)
-            history.pop(0)
+        db.save_message(sid, "user", q)
+        db.save_message(sid, "assistant", answer_for_history)
 
         latency = int((time.perf_counter() - t0) * 1000)
-        logger.end_session()
+        summary = logger.end_session()
         logger.log_request(method="GET", path="/api/chat", query=q,
                            latency_ms=latency, session_id=sid,
                            history_turns=len(history) // 2)
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+# ---------------------------------------------------------------------------
+# History & log browsing endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/sessions")
+def list_sessions(limit: int = 50, offset: int = 0):
+    return db.list_sessions(limit=limit, offset=offset)
+
+
+@app.get("/api/sessions/{session_id}")
+def get_session(session_id: str):
+    messages = db.get_session_history(session_id, limit=1000)
+    if not messages:
+        return JSONResponse({"error": "Session not found"}, status_code=404)
+    return {"session_id": session_id, "messages": messages}
+
+
+@app.get("/api/logs")
+def query_logs(session_id: str | None = None, event: str | None = None,
+               level: str | None = None, limit: int = 100, offset: int = 0):
+    return db.query_logs(session_id=session_id, event=event, level=level,
+                         limit=limit, offset=offset)

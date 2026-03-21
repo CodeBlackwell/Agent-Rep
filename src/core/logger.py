@@ -258,6 +258,42 @@ class JSONFormatter(logging.Formatter):
 
 
 # ---------------------------------------------------------------------------
+# SQLite log handler (attached lazily after Database is created)
+# ---------------------------------------------------------------------------
+
+class SQLiteHandler(logging.Handler):
+    """Write structured log records to SQLite."""
+
+    def __init__(self, db):
+        super().__init__()
+        self.db = db
+
+    def emit(self, record):
+        try:
+            extra = getattr(record, "structured", {})
+            self.db.save_log(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                level=record.levelname,
+                event=extra.get("event", record.getMessage()),
+                session_id=extra.get("session_id"),
+                fields=extra.get("fields", {}),
+            )
+        except Exception:
+            pass  # never let log persistence crash the app
+
+
+def attach_db(db):
+    """Attach a Database instance to the logger as an additional sink.
+
+    Call this after build_clients() creates the Database. Log entries emitted
+    before this call go only to console + JSONL (startup messages).
+    """
+    root = logging.getLogger("showmeoff")
+    handler = SQLiteHandler(db)
+    root.addHandler(handler)
+
+
+# ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
 

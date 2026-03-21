@@ -15,6 +15,7 @@ class Settings:
     voyage_api_key: str
     chat_provider: str
     claude_model: str
+    db_path: str
 
     @classmethod
     def load(cls) -> "Settings":
@@ -30,4 +31,5 @@ class Settings:
             voyage_api_key=os.getenv("VOYAGE_API_KEY", ""),
             chat_provider=os.getenv("CHAT_PROVIDER", "nim"),
             claude_model=os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001"),
+            db_path=os.getenv("DB_PATH", "data/showmeoff.db"),
         )

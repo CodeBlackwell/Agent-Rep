@@ -139,7 +139,7 @@ Sample session summary:
 ## Testing
 
 ```bash
-uv run pytest tests/ -v              # all 33 tests
+uv run pytest tests/ -v              # all 43 tests
 uv run pytest tests/test_qa.py -v    # just QA agent tests
 ```
 

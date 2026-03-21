@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 logs/
+data/
 neo4j_data/
 *.egg-info/
 repos/

@@ -11,7 +11,7 @@ uv sync                       # Install dependencies
 
 # Development
 just dev                      # Run FastAPI dev server on :7860
-uv run pytest tests/ -v       # Run all tests (33 tests, ~0.2s)
+uv run pytest tests/ -v       # Run all tests (43 tests, ~0.2s)
 uv run pytest tests/test_qa.py::test_react_loop -v  # Run single test
 
 # Ingestion
@@ -85,13 +85,27 @@ The stored `context` field flows through the entire query path — tool results 
 
 `JDMatchAgent` extracts requirements from job description text, embeds each requirement for vector search, computes per-requirement confidence (Strong/Partial/None) boosted by proficiency, then summarizes.
 
+### SQLite Persistence (`src/core/db.py`)
+
+`Database` class provides persistent storage for conversations and logs at `data/showmeoff.db` (configurable via `DB_PATH`). Two tables:
+
+- **`conversations`** — individual messages (session_id, role, content, metadata JSON, created_at). Keyed by session_id for multi-turn history retrieval.
+- **`logs`** — structured log entries (timestamp, level, event, session_id, fields JSON). Mirrors the JSONL output with indexed columns for querying.
+
+Thread-safe via `threading.local()` per-thread connections with WAL mode. Created by `build_clients()` and returned in the clients dict as `"db"`.
+
+**API endpoints:**
+- `GET /api/sessions` — list past conversations (paginated)
+- `GET /api/sessions/{session_id}` — full message history for a session
+- `GET /api/logs?session_id=&event=&level=` — query logs with filters
+
 ### Structured Logger
 
 `src/core/logger.py` provides structured logging with session auditing:
 
 - **Session context** via `ContextVar` — each request gets a `session_id` with accumulated cost, tokens, latency
 - **Cost estimation** from per-model pricing tables (Sonnet $3/$15, Haiku $1/$5, Voyage $0.06, NIM free)
-- **Two outputs**: colored console + JSON lines at `logs/app.jsonl`
+- **Three outputs**: colored console + JSON lines at `logs/app.jsonl` + SQLite (attached via `logger.attach_db(db)` at startup)
 - **Log levels**: `DEBUG` (raw payloads, tool results), `INFO` (LLM calls, sessions, tools), `WARNING` (retries, fallbacks), `ERROR` (API failures)
 - All clients log automatically — `log_llm_call()`, `log_embed_call()`, `log_tool_call()` etc.
 - Use `logger.start_session()` / `logger.end_session()` to wrap request handlers
@@ -116,6 +130,7 @@ The stored `context` field flows through the entire query path — tool results 
 | `ANTHROPIC_API_KEY` | — | Required when `CHAT_PROVIDER=anthropic`; also enables Sonnet for ingestion |
 | `VOYAGE_API_KEY` | — | Required when `EMBED_PROVIDER=voyage` |
 | `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Query model only — ingestion always uses Sonnet |
+| `DB_PATH` | `data/showmeoff.db` | SQLite database for conversations and logs |
 | `NEO4J_URI` | `bolt://localhost:7687` | |
 | `NEO4J_PASSWORD` | `showmeoff` | |
 | `GITHUB_TOKEN` | — | For private repo access |

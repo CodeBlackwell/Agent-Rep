@@ -1,5 +1,6 @@
 from src.config.settings import Settings
 from src.core.claude_chat_client import ClaudeChatClient
+from src.core.db import Database
 from src.core.neo4j_client import Neo4jClient
 from src.core.nim_client import NimClient
 from src.core.voyage_client import VoyageClient
@@ -8,7 +9,7 @@ from src.core.voyage_client import VoyageClient
 def build_clients(settings: Settings) -> dict:
     """Build all clients based on provider settings.
 
-    Returns dict with keys: neo4j_client, embed_client, chat_client, ingestion_chat_client.
+    Returns dict with keys: neo4j_client, embed_client, chat_client, ingestion_chat_client, db.
     """
     neo4j_client = Neo4jClient(
         uri=settings.neo4j_uri,
@@ -45,4 +46,5 @@ def build_clients(settings: Settings) -> dict:
         "embed_client": embed_client,
         "chat_client": chat_client,
         "ingestion_chat_client": ingestion_chat_client,
+        "db": Database(settings.db_path),
     }
