@@ -4,23 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ name }} — ShowMeOff</title>
-  <link rel="stylesheet" href="/static/style.css?v=9">
+  <link rel="stylesheet" href="/static/style.css?v=15">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="bamboo" style="left:3%"></div>
-  <div class="bamboo b2" style="left:5.5%"></div>
-  <div class="bamboo b3" style="left:1.5%"></div>
-  <header><h1>{{ name }}</h1></header>
-
   <main>
-    <section id="chat-panel">
-      <div id="messages"></div>
-      <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="Ask about skills, experience, code…" autocomplete="off">
-      </form>
-    </section>
+    <div class="left-col">
+      <header class="hero">
+        <h1 class="hero__name">{{ name }}</h1>
+        <p class="hero__tagline">Software Engineer</p>
+        <p class="hero__intro">I learn by building — by pulling things apart, tracing the edges, and writing the code that answers the question. Every project here began as curiosity that wouldn't settle for a tutorial. This portfolio is built the same way: an AI agent that reasons through my actual code, connects skills to evidence, and shows its work. Ask it anything and watch it think.</p>
+      </header>
+
+      <section id="chat-panel">
+        <div id="messages"></div>
+        <form id="chat-form">
+          <input type="text" id="chat-input" placeholder="Ask about skills, experience, code…" autocomplete="off">
+        </form>
+      </section>
+    </div>
 
     <section id="graph-panel">
       <div class="viz-toggle">
@@ -34,8 +37,8 @@
   </main>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="/static/fingerprint.js?v=9"></script>
-  <script src="/static/graph.js?v=9"></script>
-  <script src="/static/chat.js?v=9"></script>
+  <script src="/static/fingerprint.js?v=15"></script>
+  <script src="/static/graph.js?v=15"></script>
+  <script src="/static/chat.js?v=15"></script>
 </body>
 </html>
