@@ -545,8 +545,8 @@ class QAAgent:
                 break
             messages.append(self._assistant_msg(choice))
             for tc in choice.message.tool_calls:
-                yield f"Searching for: {tc.function.name}..."
                 args = json.loads(tc.function.arguments)
+                yield {"_status": True, "phase": "tool", "tool": tc.function.name, "args": args, "step": step + 1}
                 result = self._execute_tool(tc.function.name, args)
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": result[:MAX_TOOL_RESULT_CHARS]})
                 self._collect_evidence(result, all_evidence)
@@ -575,5 +575,7 @@ class QAAgent:
                             unique_repos=len(repos), unique_skills=len(skills))
 
         sorted_ev = _sort_evidence(all_evidence)
+        yield {"_status": True, "phase": "curating"}
         curated, curation_meta = self._curate_evidence(question, sorted_ev)
+        yield {"_status": True, "phase": "answering"}
         yield format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence))

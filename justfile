@@ -1,2 +1,3 @@
 dev:
-    uv run uvicorn src.app:app --port 7860 --reload
+    -lsof -ti :7860 | xargs kill 2>/dev/null && sleep 1
+    CHAT_PROVIDER=anthropic EMBED_PROVIDER=voyage uv run uvicorn src.app:app --port 7860 --reload

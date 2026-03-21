@@ -196,7 +196,7 @@ def test_streaming():
     agent = QAAgent(neo4j, chat, embed)
     chunks = list(agent.answer_stream("Does this engineer know Python?"))
 
-    assert any("Searching for:" in c for c in chunks if isinstance(c, str))
+    assert any(isinstance(c, dict) and c.get("_status") and c["phase"] == "tool" for c in chunks)
     assert any("Streaming answer." in c for c in chunks if isinstance(c, str))
     assert any("Confidence:" in c for c in chunks if isinstance(c, str))
 

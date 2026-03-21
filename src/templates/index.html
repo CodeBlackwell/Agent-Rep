@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ name }} — ShowMeOff</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=7">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
 </head>
@@ -24,9 +24,8 @@
 
     <section id="graph-panel">
       <div class="viz-toggle">
-        <button class="viz-toggle__btn viz-toggle__btn--active" data-mode="bloom">Bloom</button>
-        <button class="viz-toggle__btn" data-mode="dendrite">Dendrite</button>
-        <button class="viz-toggle__btn" data-mode="ribbon">Ribbon</button>
+        <button class="viz-toggle__btn viz-toggle__btn--active" data-mode="treemap">Treemap</button>
+        <button class="viz-toggle__btn" data-mode="bars">Bars</button>
       </div>
       <div id="graph-container"></div>
       <p class="graph-empty">Graph builds as you chat…</p>
@@ -35,8 +34,8 @@
   </main>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="/static/fingerprint.js"></script>
-  <script src="/static/graph.js"></script>
-  <script src="/static/chat.js"></script>
+  <script src="/static/fingerprint.js?v=7"></script>
+  <script src="/static/graph.js?v=7"></script>
+  <script src="/static/chat.js?v=7"></script>
 </body>
 </html>

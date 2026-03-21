@@ -76,6 +76,24 @@ def get_graph_data(neo4j_client):
     return {"nodes": nodes, "edges": edges}
 
 
+def _top_evidence_links(session, skill_name: str, limit: int = 5) -> list[dict]:
+    """Fetch top evidence file links for a skill, ordered by start_line."""
+    try:
+        rows = session.run(
+            "MATCH (f:File)-[:CONTAINS]->(cs:CodeSnippet)-[:DEMONSTRATES]->(s:Skill {name: $name}) "
+            "MATCH (r:Repository)-[:CONTAINS]->(f) "
+            "RETURN r.name AS repo, f.path AS path, cs.start_line AS line, cs.language AS lang "
+            "ORDER BY cs.start_line LIMIT $limit",
+            name=skill_name, limit=limit,
+        )
+        return [
+            {"repo": r["repo"], "path": r["path"], "line": r["line"] or 0, "lang": r["lang"] or ""}
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
 def get_subgraph(neo4j_client, skill_names: list[str]) -> dict:
     if not skill_names:
         return {"nodes": [], "edges": []}
@@ -94,6 +112,7 @@ def get_subgraph(neo4j_client, skill_names: list[str]) -> dict:
         for r in rows:
             did, cid, sid = f"dom:{r['domain']}", f"cat:{r['category']}", f"skill:{r['skill']}"
             size = PROFICIENCY_SIZE.get(r["proficiency"], 10)
+            evidence_links = _top_evidence_links(session, r["skill"])
             for nid, label, color, sz, meta in [
                 (did, r["domain"], NODE_COLORS["Domain"], 26, {"type": "domain"}),
                 (cid, r["category"], NODE_COLORS["Category"], 18, {"type": "category"}),
@@ -102,6 +121,7 @@ def get_subgraph(neo4j_client, skill_names: list[str]) -> dict:
                     "proficiency": r["proficiency"],
                     "evidence_count": r["snippet_count"] or 0,
                     "repo_count": r["repo_count"] or 0,
+                    "evidence_links": evidence_links,
                 }),
             ]:
                 if nid not in node_ids:

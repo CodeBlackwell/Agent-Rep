@@ -94,7 +94,10 @@ def chat(request: Request, q: str, session_id: str | None = None, fp: str | None
         assistant_text = ""
         for chunk in qa_agent.answer_stream(q, history=history):
             if isinstance(chunk, dict):
-                yield f"event: graph\ndata: {json.dumps(chunk)}\n\n"
+                if chunk.get("_status"):
+                    yield f"event: status\ndata: {json.dumps(chunk)}\n\n"
+                else:
+                    yield f"event: graph\ndata: {json.dumps(chunk)}\n\n"
             else:
                 assistant_text = chunk
                 sse = "".join(f"data: {line}\n" for line in chunk.split("\n"))
