@@ -50,6 +50,9 @@ form.addEventListener('submit', e => {
   if (sessionId) {
     url += `&session_id=${encodeURIComponent(sessionId)}`;
   }
+  if (window.__fp) {
+    url += `&fp=${encodeURIComponent(window.__fp)}`;
+  }
 
   const source = new EventSource(url);
 

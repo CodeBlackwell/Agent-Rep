@@ -1,5 +1,5 @@
 from src.core.neo4j_client import Neo4jClient
-from src.ingestion.skill_taxonomy import SKILL_HIERARCHY
+from src.ingestion.skill_taxonomy import SKILL_HIERARCHY, RESUME_SKILL_ALIASES, CATEGORY_TO_DOMAIN
 
 MIN_SCORE = 0.3
 
@@ -73,8 +73,22 @@ def find_gaps(skills_csv: str, neo4j_client: Neo4jClient) -> list[dict]:
                 "MATCH (:Engineer)-[:CLAIMS]->(:Skill {name: $name}) RETURN count(*) AS c",
                 name=skill,
             ).single()["c"]
-        status = "claimed_only" if claim > 0 else "not_found"
-        results.append({"skill": skill, "status": status, "code_examples": 0})
+        if claim > 0:
+            alias = RESUME_SKILL_ALIASES.get(skill)
+            alias_cat, alias_dom = None, None
+            if alias and alias.startswith("cat:"):
+                alias_cat = alias[4:]
+                alias_dom = CATEGORY_TO_DOMAIN.get(alias_cat)
+            elif alias:
+                hier = SKILL_HIERARCHY.get(alias)
+                if hier:
+                    alias_dom, alias_cat = hier
+            results.append({
+                "skill": skill, "status": "claimed_only", "code_examples": 0,
+                "domain": alias_dom, "category": alias_cat,
+            })
+        else:
+            results.append({"skill": skill, "status": "not_found", "code_examples": 0})
     return results
 
 

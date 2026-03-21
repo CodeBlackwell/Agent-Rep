@@ -1,12 +1,35 @@
 import json
 import re
 import time
+from dataclasses import dataclass, field
 from typing import Generator
 
 from src.core import logger
 from src.core.neo4j_client import Neo4jClient
 from src.qa.tools import search_code, get_evidence, search_resume, find_gaps, get_repo_overview, get_connected_evidence
-from src.ui.competency_map import get_subgraph
+from src.ui.competency_map import build_query_subgraph
+
+
+@dataclass
+class EntityRef:
+    name: str
+    status: str  # demonstrated | claimed_only | not_found_but_related | not_found | inferred
+    related: list[str] = field(default_factory=list)
+
+
+STATUS_PRIORITY = {
+    "demonstrated": 5, "not_found_but_related": 4,
+    "claimed_only": 3, "inferred": 2, "not_found": 1,
+}
+
+
+def _merge_entity(entities: dict[str, EntityRef], ref: EntityRef):
+    existing = entities.get(ref.name)
+    if existing is None:
+        entities[ref.name] = ref
+    elif STATUS_PRIORITY.get(ref.status, 0) > STATUS_PRIORITY.get(existing.status, 0):
+        existing.status = ref.status
+        existing.related = list(set(existing.related + ref.related))
 
 SYSTEM_PROMPT_TEMPLATE = (
     "You are a QA agent representing {name}'s software engineering portfolio. "
@@ -318,23 +341,33 @@ class QAAgent:
 
         return serialized
 
-    def _collect_entities(self, tool_name: str, args: dict, tool_result: str, entities: set):
+    def _collect_entities(self, tool_name: str, args: dict, tool_result: str,
+                          entities: dict[str, EntityRef]):
         if tool_name == "get_evidence":
-            entities.add(args.get("skill_name", ""))
+            try:
+                parsed = json.loads(tool_result)
+                status = "demonstrated" if parsed else "inferred"
+            except (json.JSONDecodeError, TypeError):
+                status = "inferred"
+            _merge_entity(entities, EntityRef(args.get("skill_name", ""), status))
         elif tool_name == "search_code":
             try:
                 for item in json.loads(tool_result):
                     for skill in item.get("skills", []):
-                        entities.add(skill)
+                        _merge_entity(entities, EntityRef(skill, "demonstrated"))
             except (json.JSONDecodeError, TypeError):
                 pass
         elif tool_name == "find_gaps":
             try:
                 for item in json.loads(tool_result):
-                    if item.get("skill"):
-                        entities.add(item["skill"])
-                    for rel in item.get("related_demonstrated", []):
-                        entities.add(rel)
+                    skill = item.get("skill", "")
+                    if not skill:
+                        continue
+                    status = item.get("status", "not_found")
+                    related = item.get("related_demonstrated", [])
+                    _merge_entity(entities, EntityRef(skill, status, related))
+                    for rel in related:
+                        _merge_entity(entities, EntityRef(rel, "demonstrated"))
             except (json.JSONDecodeError, TypeError):
                 pass
         elif tool_name == "get_repo_overview":
@@ -342,15 +375,15 @@ class QAAgent:
                 data = json.loads(tool_result)
                 for skill_info in data.get("top_skills", []):
                     if skill_info.get("skill"):
-                        entities.add(skill_info["skill"])
+                        _merge_entity(entities, EntityRef(skill_info["skill"], "demonstrated"))
             except (json.JSONDecodeError, TypeError):
                 pass
         elif tool_name == "get_connected_evidence":
-            entities.add(args.get("skill_name", ""))
+            _merge_entity(entities, EntityRef(args.get("skill_name", ""), "demonstrated"))
             try:
                 for item in json.loads(tool_result):
                     for skill in item.get("related_skills", []):
-                        entities.add(skill)
+                        _merge_entity(entities, EntityRef(skill, "demonstrated"))
             except (json.JSONDecodeError, TypeError):
                 pass
 
@@ -501,7 +534,7 @@ class QAAgent:
             messages.extend(history)
         messages.append({"role": "user", "content": question})
         all_evidence = []
-        entities: set[str] = set()
+        entities: dict[str, EntityRef] = {}
 
         for step in range(MAX_TOOL_CALLS):
             logger.info("agent.react_step", step=step + 1, max_steps=MAX_TOOL_CALLS)
@@ -524,7 +557,7 @@ class QAAgent:
             choice = response.choices[0]
 
         if entities:
-            subgraph = get_subgraph(self.neo4j, list(entities))
+            subgraph = build_query_subgraph(self.neo4j, entities)
             if subgraph["nodes"]:
                 logger.debug("agent.subgraph", node_count=len(subgraph["nodes"]),
                               edge_count=len(subgraph["edges"]))

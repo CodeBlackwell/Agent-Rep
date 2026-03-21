@@ -23,19 +23,19 @@
     </section>
 
     <section id="graph-panel">
+      <div class="viz-toggle">
+        <button class="viz-toggle__btn viz-toggle__btn--active" data-mode="bloom">Bloom</button>
+        <button class="viz-toggle__btn" data-mode="dendrite">Dendrite</button>
+        <button class="viz-toggle__btn" data-mode="ribbon">Ribbon</button>
+      </div>
       <div id="graph-container"></div>
       <p class="graph-empty">Graph builds as you chat…</p>
-      <div class="legend">
-        <span><i class="dot" style="background:#6b8f9e"></i> Repository</span>
-        <span><i class="dot" style="background:#8b7355"></i> Domain</span>
-        <span><i class="dot" style="background:#b8805a"></i> Category</span>
-        <span><i class="dot" style="background:#7a8b6f"></i> Skill</span>
-        <span class="legend-note">Size = proficiency · Dashed = repo link</span>
-      </div>
+      <div class="legend" id="viz-legend"></div>
     </section>
   </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="/static/fingerprint.js"></script>
   <script src="/static/graph.js"></script>
   <script src="/static/chat.js"></script>
 </body>

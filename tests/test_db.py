@@ -127,3 +127,67 @@ def test_message_metadata(db):
     row = conn.execute("SELECT metadata FROM conversations WHERE session_id = 's1'").fetchone()
     import json
     assert json.loads(row["metadata"]) == {"model": "haiku", "tokens": 42}
+
+
+# ------------------------------------------------------------------
+# Rate limiting
+# ------------------------------------------------------------------
+
+def test_rate_limit_allows_within_window(db):
+    allowed, remaining = db.check_rate_limit("v1", "chat", max_requests=3, window_seconds=3600)
+    assert allowed is True
+    assert remaining == 2
+
+    allowed, remaining = db.check_rate_limit("v1", "chat", max_requests=3, window_seconds=3600)
+    assert allowed is True
+    assert remaining == 1
+
+
+def test_rate_limit_blocks_when_exceeded(db):
+    for _ in range(5):
+        db.check_rate_limit("v1", "chat", max_requests=5, window_seconds=3600)
+
+    allowed, remaining = db.check_rate_limit("v1", "chat", max_requests=5, window_seconds=3600)
+    assert allowed is False
+    assert remaining == 0
+
+
+def test_rate_limit_isolates_visitors(db):
+    for _ in range(3):
+        db.check_rate_limit("v1", "chat", max_requests=3, window_seconds=3600)
+
+    # v1 is blocked
+    allowed, _ = db.check_rate_limit("v1", "chat", max_requests=3, window_seconds=3600)
+    assert allowed is False
+
+    # v2 is not
+    allowed, _ = db.check_rate_limit("v2", "chat", max_requests=3, window_seconds=3600)
+    assert allowed is True
+
+
+def test_rate_limit_isolates_endpoints(db):
+    for _ in range(3):
+        db.check_rate_limit("v1", "chat", max_requests=3, window_seconds=3600)
+
+    # chat is blocked
+    allowed, _ = db.check_rate_limit("v1", "chat", max_requests=3, window_seconds=3600)
+    assert allowed is False
+
+    # read is not
+    allowed, _ = db.check_rate_limit("v1", "read", max_requests=3, window_seconds=3600)
+    assert allowed is True
+
+
+def test_cleanup_rate_limits(db):
+    db.check_rate_limit("v1", "chat", max_requests=100, window_seconds=3600)
+    conn = db._get_conn()
+    count_before = conn.execute("SELECT COUNT(*) AS c FROM rate_limits").fetchone()["c"]
+    assert count_before > 0
+
+    # Backdate the record so cleanup will remove it
+    conn.execute("UPDATE rate_limits SET created_at = datetime('now', '-2 hours')")
+    conn.commit()
+
+    db.cleanup_rate_limits(older_than_seconds=3600)
+    count_after = conn.execute("SELECT COUNT(*) AS c FROM rate_limits").fetchone()["c"]
+    assert count_after == 0

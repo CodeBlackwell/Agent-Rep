@@ -1,8 +1,9 @@
 from unittest.mock import MagicMock, patch
 import json
 
-from src.qa.tools import search_code, get_evidence, search_resume, get_repo_overview, get_connected_evidence
-from src.qa.agent import QAAgent, format_response
+from src.qa.tools import search_code, get_evidence, search_resume, get_repo_overview, get_connected_evidence, find_gaps
+from src.qa.agent import QAAgent, format_response, EntityRef, _merge_entity
+from src.ui.competency_map import get_subgraph, get_gap_overlay, build_query_subgraph
 
 
 class _FakeResult:
@@ -274,3 +275,142 @@ def test_curate_evidence():
     assert curated[0]["file_path"] == "a.py"
     assert meta[0]["mode"] == "inline"
     assert "Impressive" in meta[0]["explanation"]
+
+
+# --- Gap-aware skill map tests ---
+
+
+def test_entity_ref_merge_priority():
+    entities = {}
+    # Start with claimed_only
+    _merge_entity(entities, EntityRef("React", "claimed_only"))
+    assert entities["React"].status == "claimed_only"
+    # Upgrade to demonstrated
+    _merge_entity(entities, EntityRef("React", "demonstrated"))
+    assert entities["React"].status == "demonstrated"
+    # Downgrade attempt should be ignored
+    _merge_entity(entities, EntityRef("React", "not_found"))
+    assert entities["React"].status == "demonstrated"
+    # not_found_but_related beats claimed_only
+    _merge_entity(entities, EntityRef("GraphQL", "claimed_only"))
+    _merge_entity(entities, EntityRef("GraphQL", "not_found_but_related", related=["REST API Design"]))
+    assert entities["GraphQL"].status == "not_found_but_related"
+    assert "REST API Design" in entities["GraphQL"].related
+
+
+def test_subgraph_meta_on_nodes():
+    neo4j = MagicMock()
+    session = MagicMock()
+    session.run.return_value = [
+        {"domain": "Backend Engineering", "category": "Web Frameworks", "skill": "FastAPI",
+         "proficiency": "extensive", "snippet_count": 38, "repo_count": 3,
+         "repos": ["Agent_Blackwell"]},
+    ]
+    neo4j.driver.session.return_value.__enter__ = MagicMock(return_value=session)
+    neo4j.driver.session.return_value.__exit__ = MagicMock(return_value=False)
+
+    result = get_subgraph(neo4j, ["FastAPI"])
+    skill_nodes = [n for n in result["nodes"] if n["id"] == "skill:FastAPI"]
+    assert len(skill_nodes) == 1
+    meta = skill_nodes[0]["meta"]
+    assert meta["type"] == "skill"
+    assert meta["status"] == "demonstrated"
+    assert meta["proficiency"] == "extensive"
+    assert meta["evidence_count"] == 38
+    assert meta["repo_count"] == 3
+    # Domain/Category nodes also have meta
+    dom_nodes = [n for n in result["nodes"] if n["id"] == "dom:Backend Engineering"]
+    assert dom_nodes[0]["meta"]["type"] == "domain"
+
+
+def test_gap_overlay_claimed_only():
+    neo4j = MagicMock()
+    refs = {
+        "Python": EntityRef("Python", "claimed_only"),
+        "React.js": EntityRef("React.js", "claimed_only"),
+    }
+    result = get_gap_overlay(neo4j, refs)
+
+    # Python maps to cat:Web Frameworks → should have domain + category + skill nodes
+    python_nodes = [n for n in result["nodes"] if n["id"] == "skill:Python"]
+    assert len(python_nodes) == 1
+    assert python_nodes[0]["meta"]["status"] == "claimed_only"
+    assert python_nodes[0]["meta"]["placed_under"] == "Web Frameworks"
+    assert python_nodes[0]["color"] == "#a8a099"
+
+    # React.js maps to skill alias "React" → should have alias_of in meta
+    react_nodes = [n for n in result["nodes"] if n["id"] == "skill:React.js"]
+    assert len(react_nodes) == 1
+    assert react_nodes[0]["meta"]["alias_of"] == "React"
+
+    # Should have a dashed edge from React.js to React
+    alias_edges = [e for e in result["edges"] if e["from"] == "skill:React.js" and e["to"] == "skill:React"]
+    assert len(alias_edges) == 1
+
+
+def test_gap_overlay_related():
+    neo4j = MagicMock()
+    refs = {
+        "GraphQL": EntityRef("GraphQL", "not_found_but_related",
+                             related=["REST API Design", "gRPC"]),
+    }
+    result = get_gap_overlay(neo4j, refs)
+
+    gap_nodes = [n for n in result["nodes"] if n["id"] == "skill:GraphQL"]
+    assert len(gap_nodes) == 1
+    assert gap_nodes[0]["meta"]["status"] == "gap"
+    assert gap_nodes[0]["color"] == "#c4756a"
+
+    # Dashed edges to related demonstrated skills
+    related_edges = [e for e in result["edges"] if e["from"] == "skill:GraphQL"]
+    assert len(related_edges) == 2
+    targets = {e["to"] for e in related_edges}
+    assert targets == {"skill:REST API Design", "skill:gRPC"}
+
+
+def test_build_query_subgraph_merges():
+    neo4j = MagicMock()
+    session = MagicMock()
+    session.run.return_value = [
+        {"domain": "Backend Engineering", "category": "API & Protocols",
+         "skill": "REST API Design", "proficiency": "extensive",
+         "snippet_count": 100, "repo_count": 4, "repos": ["SPICE"]},
+    ]
+    neo4j.driver.session.return_value.__enter__ = MagicMock(return_value=session)
+    neo4j.driver.session.return_value.__exit__ = MagicMock(return_value=False)
+
+    refs = {
+        "REST API Design": EntityRef("REST API Design", "demonstrated"),
+        "GraphQL": EntityRef("GraphQL", "not_found_but_related",
+                             related=["REST API Design"]),
+        "Python": EntityRef("Python", "claimed_only"),
+    }
+    result = build_query_subgraph(neo4j, refs)
+
+    node_ids = {n["id"] for n in result["nodes"]}
+    # Demonstrated skill present
+    assert "skill:REST API Design" in node_ids
+    # Gap skill present
+    assert "skill:GraphQL" in node_ids
+    # Claimed skill present
+    assert "skill:Python" in node_ids
+    # No duplicate nodes
+    assert len(node_ids) == len(result["nodes"])
+    # All nodes have levels
+    assert all("level" in n for n in result["nodes"])
+
+
+def test_find_gaps_claimed_with_alias():
+    neo4j = MagicMock()
+    neo4j.get_skill_with_hierarchy.return_value = None
+    session = MagicMock()
+    # claim check returns 1 (skill is claimed on resume)
+    session.run.return_value = _FakeResult([{"c": 1}])
+    neo4j.driver.session.return_value.__enter__ = MagicMock(return_value=session)
+    neo4j.driver.session.return_value.__exit__ = MagicMock(return_value=False)
+
+    result = find_gaps("Python", neo4j)
+    assert len(result) == 1
+    assert result[0]["status"] == "claimed_only"
+    assert result[0]["domain"] == "Backend Engineering"
+    assert result[0]["category"] == "Web Frameworks"

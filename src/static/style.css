@@ -219,3 +219,63 @@ body::after {
 /* Markdown inline */
 .msg-assistant strong { color: var(--ink); font-weight: 400; }
 .msg-assistant em { font-style: italic; }
+
+/* Viz toggle bar */
+.viz-toggle {
+  display: flex;
+  gap: 0;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--stone);
+}
+
+.viz-toggle__btn {
+  flex: 1;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--stone);
+  border-right: none;
+  background: var(--surface);
+  color: var(--ink-light);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.viz-toggle__btn:last-child { border-right: 1px solid var(--stone); border-radius: 0 3px 3px 0; }
+.viz-toggle__btn:first-child { border-radius: 3px 0 0 3px; }
+.viz-toggle__btn--active { background: var(--bg); color: var(--ink); }
+.viz-toggle__btn:hover:not(.viz-toggle__btn--active) { background: var(--bg); }
+
+/* D3 SVG */
+#viz-svg { width: 100%; height: 100%; }
+
+.bloom-arc { cursor: pointer; transition: opacity 0.2s; }
+.bloom-arc:hover { opacity: 0.8; }
+.bloom-label { font-size: 0.7rem; fill: var(--ink-light); pointer-events: none; font-family: inherit; }
+
+.dendrite-link { fill: none; }
+.dendrite-node { cursor: pointer; }
+.dendrite-label { font-size: 0.7rem; fill: var(--ink-light); pointer-events: none; font-family: inherit; }
+.dendrite-gap-link { stroke-dasharray: 4 3; }
+
+.ribbon-arc { fill: none; opacity: 0.5; }
+.ribbon-arc:hover { opacity: 1; }
+.ribbon-arc--gap { stroke-dasharray: 5 3; }
+.ribbon-node { cursor: pointer; }
+.ribbon-label { font-size: 0.7rem; fill: var(--ink-light); text-anchor: middle; pointer-events: none; font-family: inherit; }
+
+.viz-tooltip {
+  position: absolute;
+  padding: 0.4rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--stone);
+  border-radius: 3px;
+  font-size: 0.75rem;
+  color: var(--ink);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+  font-family: inherit;
+}
+.viz-tooltip--visible { opacity: 1; }

@@ -36,6 +36,15 @@ CREATE TABLE IF NOT EXISTS logs (
 CREATE INDEX IF NOT EXISTS idx_logs_session ON logs(session_id);
 CREATE INDEX IF NOT EXISTS idx_logs_event   ON logs(event);
 CREATE INDEX IF NOT EXISTS idx_logs_ts      ON logs(timestamp);
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    visitor_id  TEXT NOT NULL,
+    endpoint    TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_rl_visitor ON rate_limits(visitor_id, endpoint, created_at);
 """
 
 
@@ -156,6 +165,48 @@ class Database:
                 d["fields"] = json.loads(d["fields"])
             results.append(d)
         return results
+
+    # ------------------------------------------------------------------
+    # Rate limiting
+    # ------------------------------------------------------------------
+
+    def check_rate_limit(self, visitor_id: str, endpoint: str,
+                         max_requests: int, window_seconds: int) -> tuple[bool, int]:
+        """Check if a visitor is within rate limits.
+
+        Returns (allowed: bool, remaining: int).
+        """
+        conn = self._get_conn()
+        cutoff = datetime.now(timezone.utc).isoformat()
+
+        # Count requests in the window
+        row = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM rate_limits "
+            "WHERE visitor_id = ? AND endpoint = ? "
+            "AND created_at > datetime('now', ?)",
+            (visitor_id, endpoint, f"-{window_seconds} seconds"),
+        ).fetchone()
+        count = row["cnt"]
+
+        if count >= max_requests:
+            return False, 0
+
+        # Record this request
+        conn.execute(
+            "INSERT INTO rate_limits (visitor_id, endpoint) VALUES (?, ?)",
+            (visitor_id, endpoint),
+        )
+        conn.commit()
+        return True, max_requests - count - 1
+
+    def cleanup_rate_limits(self, older_than_seconds: int = 7200):
+        """Remove expired rate limit entries."""
+        conn = self._get_conn()
+        conn.execute(
+            "DELETE FROM rate_limits WHERE created_at < datetime('now', ?)",
+            (f"-{older_than_seconds} seconds",),
+        )
+        conn.commit()
 
     def close(self):
         if hasattr(self._local, "conn"):

@@ -59,3 +59,28 @@ SKILL_HIERARCHY = {
     for cat_name, skills in categories.items()
     for skill in skills
 }
+
+CATEGORY_TO_DOMAIN: dict[str, str] = {
+    cat: domain
+    for domain, categories in TAXONOMY.items()
+    for cat in categories
+}
+
+# Maps resume keywords (orphan CLAIMS nodes) to taxonomy.
+# skill→skill for near-matches, "cat:X" for broad terms placed under a category.
+RESUME_SKILL_ALIASES: dict[str, str] = {
+    # Near-match → exact taxonomy skill name
+    "React.js": "React",
+    "LLM": "LLM Integration",
+    "APIs": "REST API Design",
+    "Automation": "Infrastructure Automation",
+    # Broad terms → closest taxonomy category
+    "Python": "cat:Web Frameworks",
+    "JavaScript": "cat:Frameworks",
+    "Machine Learning": "cat:Classical ML",
+    "SQL": "cat:Relational",
+    "HTML/CSS": "cat:Languages & Styling",
+    "Git": "cat:IaC & CI/CD",
+    "Redshift": "cat:Storage & Modeling",
+    "Snowflake": "cat:Storage & Modeling",
+}

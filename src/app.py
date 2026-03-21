@@ -1,4 +1,5 @@
 import json
+import hashlib
 import time
 import uuid
 from pathlib import Path
@@ -31,6 +32,34 @@ templates = Jinja2Templates(directory=base / "templates")
 
 MAX_HISTORY_TURNS = 20
 
+# Rate limits: (max_requests, window_seconds)
+RATE_LIMITS = {
+    "chat": (20, 3600),     # 20 queries/hour — each costs ~$0.01
+    "read": (60, 3600),     # 60 reads/hour for browsing endpoints
+}
+
+
+def _visitor_id(request: Request, fp: str | None = None) -> str:
+    """Build a composite visitor ID from IP + browser fingerprint."""
+    ip = request.client.host if request.client else "unknown"
+    raw = f"{ip}:{fp or 'none'}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _check_limit(visitor_id: str, bucket: str) -> JSONResponse | None:
+    """Return a 429 response if rate limited, else None."""
+    max_req, window = RATE_LIMITS[bucket]
+    allowed, remaining = db.check_rate_limit(visitor_id, bucket, max_req, window)
+    if not allowed:
+        logger.warning("rate_limit.exceeded", visitor_id=visitor_id, bucket=bucket)
+        return JSONResponse(
+            {"error": "Rate limit exceeded. Please try again later.",
+             "retry_after_seconds": window},
+            status_code=429,
+            headers={"Retry-After": str(window)},
+        )
+    return None
+
 
 @app.get("/")
 def index(request: Request):
@@ -41,7 +70,12 @@ def index(request: Request):
 
 
 @app.get("/api/chat")
-def chat(q: str, session_id: str | None = None):
+def chat(request: Request, q: str, session_id: str | None = None, fp: str | None = None):
+    vid = _visitor_id(request, fp)
+    blocked = _check_limit(vid, "chat")
+    if blocked:
+        return blocked
+
     # Resolve or create session
     if session_id and db.session_exists(session_id):
         sid = session_id
@@ -73,10 +107,10 @@ def chat(q: str, session_id: str | None = None):
         db.save_message(sid, "assistant", answer_for_history)
 
         latency = int((time.perf_counter() - t0) * 1000)
-        summary = logger.end_session()
+        logger.end_session()
         logger.log_request(method="GET", path="/api/chat", query=q,
                            latency_ms=latency, session_id=sid,
-                           history_turns=len(history) // 2)
+                           visitor_id=vid, history_turns=len(history) // 2)
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
@@ -86,12 +120,20 @@ def chat(q: str, session_id: str | None = None):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/sessions")
-def list_sessions(limit: int = 50, offset: int = 0):
+def list_sessions(request: Request, limit: int = 50, offset: int = 0):
+    vid = _visitor_id(request)
+    blocked = _check_limit(vid, "read")
+    if blocked:
+        return blocked
     return db.list_sessions(limit=limit, offset=offset)
 
 
 @app.get("/api/sessions/{session_id}")
-def get_session(session_id: str):
+def get_session(request: Request, session_id: str):
+    vid = _visitor_id(request)
+    blocked = _check_limit(vid, "read")
+    if blocked:
+        return blocked
     messages = db.get_session_history(session_id, limit=1000)
     if not messages:
         return JSONResponse({"error": "Session not found"}, status_code=404)
@@ -99,7 +141,20 @@ def get_session(session_id: str):
 
 
 @app.get("/api/logs")
-def query_logs(session_id: str | None = None, event: str | None = None,
+def query_logs(request: Request, session_id: str | None = None, event: str | None = None,
                level: str | None = None, limit: int = 100, offset: int = 0):
+    vid = _visitor_id(request)
+    blocked = _check_limit(vid, "read")
+    if blocked:
+        return blocked
     return db.query_logs(session_id=session_id, event=event, level=level,
                          limit=limit, offset=offset)
+
+
+# ---------------------------------------------------------------------------
+# Periodic cleanup (runs on startup, then every hour via background task)
+# ---------------------------------------------------------------------------
+
+@app.on_event("startup")
+def _startup_cleanup():
+    db.cleanup_rate_limits()
