@@ -222,25 +222,25 @@ MAX_TOOL_CALLS = 4
 MAX_TOOL_RESULT_CHARS = 4000
 
 
-def _github_link(e: dict) -> str:
+def _github_link(e: dict, github_owner: str = "codeblackwell") -> str:
     repo = e.get("repo", "")
     fp = e.get("file_path", "unknown")
     start = e.get("start_line", 0)
     if repo:
-        return f"[{repo}/{fp}#L{start}](https://github.com/codeblackwell/{repo}/blob/main/{fp}#L{start})"
+        return f"[{repo}/{fp}#L{start}](https://github.com/{github_owner}/{repo}/blob/main/{fp}#L{start})"
     return f"`{fp}:L{start}`"
 
 
 def format_response(answer: str, evidence: list[dict], annotations: list[str] | None = None,
                      curation: list[dict] | None = None, total_count: int | None = None,
-                     show_private_code: bool = False) -> str:
+                     show_private_code: bool = False, github_owner: str = "codeblackwell") -> str:
     shown = evidence[:MAX_EVIDENCE_SHOWN]
     total = total_count if total_count is not None else len(evidence)
     lines = [answer, ""]
     if shown:
         lines.append("\n**Evidence:**")
         for i, e in enumerate(shown):
-            link = _github_link(e)
+            link = _github_link(e, github_owner)
             cur = curation[i] if curation and i < len(curation) else None
 
             # Force "link" mode for private repo evidence unless owner opted in
@@ -294,11 +294,12 @@ CURATE_PROMPT = (
 
 class QAAgent:
     def __init__(self, neo4j_client: Neo4jClient, chat_client, embed_client,
-                 show_private_code: bool = False):
+                 show_private_code: bool = False, github_owner: str = "codeblackwell"):
         self.neo4j = neo4j_client
         self.chat = chat_client
         self.embed = embed_client
         self.show_private_code = show_private_code
+        self.github_owner = github_owner
         self.system_prompt = self._resolve_prompt()
 
     def _resolve_prompt(self) -> str:
@@ -507,7 +508,7 @@ class QAAgent:
                 logger.info("agent.react_done", step=step + 1, reason="final_answer")
                 sorted_ev = _sort_evidence(all_evidence)
                 curated, curation_meta = self._curate_evidence(question, sorted_ev)
-                return format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), show_private_code=self.show_private_code)
+                return format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), show_private_code=self.show_private_code, github_owner=self.github_owner)
             messages.append(self._assistant_msg(choice))
             for tc in choice.message.tool_calls:
                 result = self._execute_tool(tc.function.name, json.loads(tc.function.arguments))
@@ -525,7 +526,7 @@ class QAAgent:
         logger.log_evidence(collected=len(all_evidence),
                             unique_repos=len(repos), unique_skills=len(skills))
 
-        return format_response(_trim_answer(_strip_think(response.choices[0].message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence))
+        return format_response(_trim_answer(_strip_think(response.choices[0].message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), github_owner=self.github_owner)
 
     def answer_stream(self, question: str,
                        history: list[dict] | None = None) -> Generator[str | dict, None, None]:
@@ -586,4 +587,4 @@ class QAAgent:
         yield {"_status": True, "phase": "curating"}
         curated, curation_meta = self._curate_evidence(question, sorted_ev)
         yield {"_status": True, "phase": "answering"}
-        yield format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence))
+        yield format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), github_owner=self.github_owner)

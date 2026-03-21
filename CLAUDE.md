@@ -156,22 +156,23 @@ Visitor identity is a composite of IP address + lightweight browser fingerprint 
 | `NEO4J_URI` | `bolt://localhost:7687` | |
 | `NEO4J_PASSWORD` | `showmeoff` | |
 | `GITHUB_TOKEN` | — | For private repo access |
+| `GITHUB_OWNER` | `codeblackwell` | GitHub username for repo links |
 | `DOMAIN` | `localhost` | Domain for Caddy HTTPS (production only) |
 | `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
 ## Deployment
 
-**Production:** `https://prove.codeblackwell.ai` — Hetzner CX22 (2 vCPU, 4GB RAM) at `5.78.198.79`.
+**Production:** `https://prove.codeblackwell.ai` — Hetzner CX22 (2 vCPU, 4GB RAM).
 
 ```bash
-# Deploy / update
-ssh root@5.78.198.79 'cd /opt/showmeoff && git pull && docker compose -f docker-compose.prod.yml up -d --build'
+# Deploy / update (from server)
+cd /opt/showmeoff && git pull && docker compose -f docker-compose.prod.yml up -d --build
 
-# Logs
-ssh root@5.78.198.79 'docker compose -f /opt/showmeoff/docker-compose.prod.yml logs -f'
+# Logs (from server)
+docker compose -f /opt/showmeoff/docker-compose.prod.yml logs -f
 
 # Full fresh deploy
-ssh root@your-server 'bash -s' < scripts/deploy.sh
+bash scripts/deploy.sh
 ```
 
 **Stack:** `docker-compose.prod.yml` runs three services:

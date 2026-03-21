@@ -301,13 +301,16 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 .msg-assistant pre code { background: none; padding: 0; color: var(--ink); }
 
 #chat-form {
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
   border-top: 1px solid rgba(212, 205, 196, 0.4);
   padding-top: 1rem;
   background: transparent;
 }
 
 #chat-input {
-  width: 100%;
+  flex: 1;
   border: none;
   border-bottom: 1px solid var(--stone);
   background: transparent;
@@ -320,6 +323,24 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 #chat-input::placeholder { color: var(--ink-light); }
 #chat-input:focus { border-bottom-color: var(--accent); }
+
+.jd-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--stone);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--ink-faint);
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: 0.35rem;
+}
+
+.jd-btn:hover { color: var(--accent); border-color: var(--accent); }
 
 /* Loading dots */
 .loading span {
@@ -345,7 +366,6 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   display: flex;
   flex-direction: column;
   position: relative;
-  flex: 1;
   background: rgba(250, 247, 242, 0.22);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -886,3 +906,79 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 }
 
 .ref-private-note a:hover { text-decoration: underline; }
+
+/* ── JD Match Modal ──────────────────────────────── */
+
+.jd-modal { display: none; position: fixed; inset: 0; z-index: 100; }
+.jd-modal--open { display: flex; align-items: center; justify-content: center; }
+
+.jd-modal__backdrop { position: absolute; inset: 0; background: rgba(44, 44, 44, 0.35); backdrop-filter: blur(2px); }
+
+.jd-modal__panel {
+  position: relative; width: min(560px, 90vw); max-height: 85vh; overflow-y: auto;
+  background: rgba(250, 247, 242, 0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 205, 196, 0.45); border-radius: 14px;
+  padding: 1.6rem 1.8rem 1.4rem;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.jd-modal__close { position: absolute; top: 0.6rem; right: 0.8rem; background: none; border: none; font-size: 1.4rem; color: var(--ink-faint); cursor: pointer; line-height: 1; }
+.jd-modal__close:hover { color: var(--ink); }
+
+.jd-modal__title { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; font-size: 1.2rem; color: var(--ink); margin-bottom: 0.2rem; }
+.jd-modal__subtitle { font-size: 0.82rem; color: var(--ink-light); margin-bottom: 1rem; }
+
+/* Drop zone */
+.jd-drop { border: 2px dashed var(--stone); border-radius: 10px; padding: 1.4rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 0.8rem; }
+.jd-drop:hover, .jd-drop--over { border-color: var(--accent); background: rgba(107, 76, 42, 0.04); }
+.jd-drop__label { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; color: var(--ink-faint); font-size: 0.82rem; }
+.jd-drop__label svg { color: var(--stone); }
+.jd-drop__browse { font-size: 0.72rem; color: var(--accent); }
+.jd-drop__file { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.jd-drop__filename { font-size: 0.85rem; color: var(--ink); }
+.jd-drop__clear { background: none; border: none; font-size: 1.1rem; color: var(--ink-faint); cursor: pointer; line-height: 1; }
+.jd-drop__clear:hover { color: var(--ink); }
+
+.jd-text { width: 100%; border: 1px solid var(--stone); border-radius: 8px; background: transparent; font-family: inherit; font-size: 0.85rem; color: var(--ink); padding: 0.6rem 0.8rem; resize: vertical; outline: none; transition: border-color 0.15s; margin-bottom: 1rem; }
+.jd-text:focus { border-color: var(--accent); }
+.jd-text::placeholder { color: var(--ink-faint); }
+
+.jd-modal__analyze { display: block; width: 100%; padding: 0.6rem; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: #fff; font-family: inherit; font-size: 0.88rem; cursor: pointer; transition: opacity 0.15s; }
+.jd-modal__analyze:hover:not(:disabled) { opacity: 0.9; }
+.jd-modal__analyze:disabled { opacity: 0.45; cursor: default; }
+
+/* Da Vinci loading spinner */
+.jd-loading__inner { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding: 1.5rem 0; }
+.jd-spinner { animation: spin 3s linear infinite; }
+.jd-spinner__arc { stroke-dasharray: 60 200; animation: arc-draw 1.8s ease-in-out infinite; }
+.jd-loading__text { font-size: 0.85rem; color: var(--ink-light); }
+.jd-loading__timer { font-size: 0.78rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+/* Results */
+.jd-results { margin-top: 1.2rem; }
+.jd-results__header { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; }
+.jd-results__pct { font-family: "Cormorant Garamond", Georgia, serif; font-size: 2.4rem; font-weight: 600; color: var(--ink); line-height: 1; }
+.jd-results__label { font-size: 0.85rem; color: var(--ink-faint); }
+.jd-results__summary { font-size: 0.85rem; color: var(--ink-light); line-height: 1.55; margin-bottom: 1rem; }
+.jd-results__error { color: #b05a4f; font-size: 0.85rem; }
+.jd-results__reqs { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.jd-req { padding: 0.4rem 0; border-bottom: 1px solid #ebe6df; }
+.jd-req:last-child { border-bottom: none; }
+.jd-req__row { display: flex; align-items: center; gap: 0.5rem; }
+.jd-req__name { flex: 1; font-size: 0.82rem; color: var(--ink); }
+
+.jd-conf { flex-shrink: 0; font-size: 0.68rem; font-weight: 400; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.15rem 0.45rem; border-radius: 3px; }
+.jd-conf--strong { background: #5a7a4f22; color: #4a6a3f; }
+.jd-conf--partial { background: #8b735522; color: #7a6345; }
+.jd-conf--none { background: #9e989022; color: #8a8280; }
+
+.jd-req__toggle { flex-shrink: 0; background: none; border: 1px solid var(--stone); border-radius: 10px; padding: 0.1rem 0.5rem; font-family: inherit; font-size: 0.65rem; color: var(--accent); cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+.jd-req__toggle:hover { background: var(--bg); }
+.jd-req__toggle--open { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.jd-evidence { padding: 0.4rem 0 0.2rem 0.8rem; border-left: 2px solid var(--stone); margin-top: 0.3rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.jd-evidence__item { font-size: 0.75rem; }
+.jd-evidence__link { color: var(--accent); text-decoration: none; font-size: 0.72rem; word-break: break-all; }
+.jd-evidence__link:hover { text-decoration: underline; }
+.jd-evidence__ctx { font-size: 0.7rem; color: var(--ink-light); line-height: 1.45; margin-top: 0.1rem; }

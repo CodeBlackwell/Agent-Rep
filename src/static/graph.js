@@ -266,7 +266,8 @@ function hideTooltip() {
 
 function _ghLink(repo, path, line, branch) {
   const b = branch || 'main';
-  return `https://github.com/codeblackwell/${repo}/blob/${b}/${path}#L${line}`;
+  const owner = window.__GITHUB_OWNER__ || 'codeblackwell';
+  return `https://github.com/${owner}/${repo}/blob/${b}/${path}#L${line}`;
 }
 
 function tipHtml(d) {
@@ -411,7 +412,7 @@ function _renderRefList(body, byRepo, filterRepo) {
     if (filterRepo && repo !== filterRepo) continue;
     const isPrivate = refs[0] && refs[0].private;
     if (isPrivate) hasPrivate = true;
-    const repoUrl = `https://github.com/codeblackwell/${repo}`;
+    const repoUrl = `https://github.com/${window.__GITHUB_OWNER__ || 'codeblackwell'}/${repo}`;
     const lock = isPrivate ? '<span class="ref-repo__lock" title="Private repository">\u{1F512}</span>' : '';
     html += `<div class="ref-repo">`;
     html += `<h3 class="ref-repo__name"><a href="${repoUrl}" target="_blank">${repo}</a> ${lock}</h3>`;

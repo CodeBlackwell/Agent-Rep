@@ -11,14 +11,13 @@ dependencies = [
     "anthropic",
     "python-dotenv",
     "tree-sitter",
-    "pytest",
-    "tqdm",
-    "pytest-timeout",
     "pypdf",
     "tree-sitter-python>=0.25.0",
     "tree-sitter-javascript>=0.25.0",
     "tree-sitter-typescript>=0.23.2",
     "voyageai",
+    "python-docx",
+    "python-multipart",
 ]
 
 [build-system]
@@ -31,4 +30,6 @@ packages = ["src"]
 [dependency-groups]
 dev = [
     "playwright>=1.58.0",
+    "pytest",
+    "pytest-timeout",
 ]

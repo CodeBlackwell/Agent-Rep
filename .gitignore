@@ -7,3 +7,6 @@ data/
 neo4j_data/
 *.egg-info/
 repos/
+dump/
+ralph.py
+ralph_timing.log

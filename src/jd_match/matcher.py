@@ -44,7 +44,10 @@ def match_requirement(requirement: str, neo4j_client: Neo4jClient, embed_client)
             "start_line": r["props"].get("start_line", 0),
             "end_line": r["props"].get("end_line", 0),
             "content": r["props"].get("content", ""),
+            "context": r["props"].get("context", ""),
             "score": r["score"],
+            "repo": r.get("repo"),
+            "private": r.get("private", False),
         }
         # Enrich with proficiency from skill nodes
         _enrich_with_proficiency(entry, r["props"].get("name", ""), neo4j_client)

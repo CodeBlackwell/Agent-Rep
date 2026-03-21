@@ -42,7 +42,12 @@
       <section id="chat-panel">
         <div id="messages"></div>
         <form id="chat-form">
-          <input type="text" id="chat-input" placeholder="Ask about skills, experience, code…" autocomplete="off">
+          <input type="text" id="chat-input" placeholder="Ask about skills, experience, code… or upload a JD →" autocomplete="off">
+          <button type="button" class="jd-btn" id="jd-btn" title="Analyze a job description">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </button>
         </form>
       </section>
     </div>
@@ -61,10 +66,12 @@
 
   <footer class="site-credit">Made with <span class="site-credit__heart">🖤</span> by <a href="https://github.com/codeblackwell" target="_blank">@CodeBlackwell</a></footer>
 
+  <script>window.__GITHUB_OWNER__ = "{{ github_owner }}";</script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="/static/fingerprint.js?v=21"></script>
   <script src="/static/graph.js?v=21"></script>
-  <script src="/static/chat.js?v=21"></script>
+  <script src="/static/chat.js?v=22"></script>
+  <script src="/static/jd.js?v=22"></script>
   <script>
     (function() {
       const bg = new Image();

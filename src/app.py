@@ -2,8 +2,9 @@ import json
 import hashlib
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,6 +12,8 @@ from fastapi.templating import Jinja2Templates
 from src.config.settings import Settings
 from src.core import logger
 from src.core.client_factory import build_clients
+from src.jd_match import JDMatchAgent
+from src.jd_match.extract import extract_text
 from src.qa.agent import QAAgent
 
 settings = Settings.load()
@@ -21,12 +24,21 @@ db = clients["db"]
 logger.attach_db(db)
 
 qa_agent = QAAgent(clients["neo4j_client"], clients["chat_client"], clients["embed_client"],
-                   show_private_code=settings.show_private_code)
+                   show_private_code=settings.show_private_code,
+                   github_owner=settings.github_owner)
+jd_agent = JDMatchAgent(clients["neo4j_client"], clients["chat_client"], clients["embed_client"])
 
 logger.info("app.startup", chat_provider=settings.chat_provider,
             embed_provider=settings.embed_provider)
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.cleanup_rate_limits()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 base = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=base / "static"), name="static")
 templates = Jinja2Templates(directory=base / "templates")
@@ -74,7 +86,10 @@ def index(request: Request):
     with clients["neo4j_client"].driver.session() as s:
         r = s.run("MATCH (e:Engineer) RETURN e.name AS name LIMIT 1").single()
     name = r["name"] if r else "Engineer"
-    return templates.TemplateResponse("index.html", {"request": request, "name": name})
+    return templates.TemplateResponse("index.html", {
+        "request": request, "name": name,
+        "github_owner": settings.github_owner,
+    })
 
 
 @app.get("/api/chat")
@@ -227,9 +242,61 @@ def skill_references(request: Request, skill_name: str):
 
 
 # ---------------------------------------------------------------------------
+# JD Match endpoint
+# ---------------------------------------------------------------------------
+
+@app.post("/api/jd-match")
+async def jd_match(request: Request, file: UploadFile = File(None),
+                   text: str = Form(None), fp: str = Form(None)):
+    vid = _visitor_id(request, fp)
+    blocked = _check_limit(vid, "chat", request)
+    if blocked:
+        return blocked
+
+    if file and file.filename:
+        content = await file.read()
+        try:
+            jd_text = extract_text(file.filename, content)
+        except ValueError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+    elif text:
+        jd_text = text
+    else:
+        return JSONResponse({"error": "Provide a file or text"}, status_code=400)
+
+    if not jd_text.strip():
+        return JSONResponse({"error": "Could not extract text from file"}, status_code=400)
+
+    logger.info("jd_match.start", text_length=len(jd_text))
+    report = jd_agent.match(jd_text)
+    logger.info("jd_match.done", match_pct=report.match_percentage,
+                req_count=len(report.requirements))
+    return {
+        "match_percentage": report.match_percentage,
+        "summary": report.summary,
+        "requirements": [
+            {
+                "requirement": r.requirement,
+                "confidence": r.confidence,
+                "evidence_count": len(r.evidence),
+                "evidence": [
+                    {
+                        "repo": e.get("repo", ""),
+                        "path": e.get("file_path", ""),
+                        "start_line": e.get("start_line", 0),
+                        "end_line": e.get("end_line", 0),
+                        "context": e.get("context", ""),
+                        "private": e.get("private", False),
+                    }
+                    for e in r.evidence[:5]
+                ],
+            }
+            for r in report.requirements
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Periodic cleanup (runs on startup, then every hour via background task)
 # ---------------------------------------------------------------------------
 
-@app.on_event("startup")
-def _startup_cleanup():
-    db.cleanup_rate_limits()

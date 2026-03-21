@@ -2,7 +2,7 @@
 Run after ingestion to link skills without re-embedding."""
 
 from src.config.settings import Settings
-from src.core import Neo4jClient
+from src.core import Neo4jClient, logger
 from src.ingestion.skill_keywords import SKILL_MAP
 
 
@@ -28,14 +28,14 @@ def retag():
         s.run("MATCH ()-[r:USES]->() DELETE r")
         s.run("MATCH (n:Skill) WHERE NOT (n)<-[:CLAIMS]-(:Engineer) DETACH DELETE n")
         s.run("MATCH (n:Technology) DETACH DELETE n")
-        print("Cleared old skill/tech data")
+        logger.info("retag.cleared", detail="old skill/tech data")
 
         # Get all snippets with their repo
         snippets = s.run(
             "MATCH (r:Repository)-[:CONTAINS]->(:File)-[:CONTAINS]->(cs:CodeSnippet) "
             "RETURN r.name AS repo, cs.name AS name, cs.file_path AS fp, cs.content AS content"
         ).data()
-        print(f"Processing {len(snippets)} snippets...")
+        logger.info("retag.processing", snippet_count=len(snippets))
 
         repo_skills: dict[str, set[str]] = {}
         demo_count = 0
@@ -70,7 +70,7 @@ def retag():
                     "MERGE (r)-[:USES]->(t)",
                     repo=repo, skill=skill,
                 )
-            print(f"  {repo}: {len(skills)} skills")
+            logger.info("retag.repo_skills", repo=repo, skill_count=len(skills))
 
         # Link engineer to repos
         eng = s.run("MATCH (e:Engineer) RETURN e.name AS name LIMIT 1").single()
@@ -82,7 +82,8 @@ def retag():
                     eng=eng["name"], repo=repo,
                 )
 
-        print(f"\nDone: {demo_count} DEMONSTRATES edges, {sum(len(v) for v in repo_skills.values())} USES_SKILL edges")
+        logger.info("retag.done", demonstrates_edges=demo_count,
+                     uses_skill_edges=sum(len(v) for v in repo_skills.values()))
 
     neo4j.close()
 
