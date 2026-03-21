@@ -3,6 +3,8 @@ import time
 import voyageai
 from voyageai.error import RateLimitError
 
+from src.core import logger
+
 EMBED_DIMENSIONS = 1024
 INPUT_TYPE_MAP = {"passage": "document", "query": "query"}
 
@@ -16,16 +18,25 @@ class VoyageClient:
         voyage_input_type = INPUT_TYPE_MAP.get(input_type, input_type)
         for attempt in range(10):
             try:
+                t0 = time.perf_counter()
                 result = self.client.embed(
                     texts, model=model, input_type=voyage_input_type,
                     output_dimension=EMBED_DIMENSIONS,
                 )
+                latency = int((time.perf_counter() - t0) * 1000)
+                logger.log_embed_call(
+                    provider="voyage", model=model,
+                    batch_size=len(texts), latency_ms=latency,
+                    input_type=input_type,
+                    total_tokens=result.total_tokens if hasattr(result, "total_tokens") else None,
+                )
                 return result.embeddings
             except RateLimitError:
                 wait = min(2 ** attempt * 5, 120)
-                print(f"  Voyage rate limited (attempt {attempt + 1}/10), waiting {wait}s...")
+                logger.log_embed_retry(provider="voyage", attempt=attempt + 1, wait_s=wait)
                 time.sleep(wait)
                 if attempt == 9:
                     raise
             except Exception as e:
+                logger.log_llm_error(provider="voyage", error=str(e), purpose="embed")
                 raise RuntimeError(f"Voyage embed error: {e}") from e

@@ -153,7 +153,8 @@ class Neo4jClient:
             "ORDER BY f.path, cs.start_line "
             "RETURN f.path AS file_path, cs.name AS snippet_name, "
             "cs.start_line AS start_line, cs.end_line AS end_line, "
-            "cs.content AS content, s.proficiency AS proficiency, related_skills "
+            "cs.content AS content, cs.context AS context, "
+            "s.proficiency AS proficiency, related_skills "
             "LIMIT 15"
         )
         with self.driver.session() as session:

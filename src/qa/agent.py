@@ -1,7 +1,9 @@
 import json
 import re
+import time
 from typing import Generator
 
+from src.core import logger
 from src.core.neo4j_client import Neo4jClient
 from src.qa.tools import search_code, get_evidence, search_resume, find_gaps, get_repo_overview, get_connected_evidence
 from src.ui.competency_map import get_subgraph
@@ -38,7 +40,6 @@ def _compute_confidence(evidence: list[dict]) -> str:
     count = len(evidence)
     if count == 0:
         return "None"
-    # Boost for extensive proficiency
     proficiencies = [e.get("proficiency") for e in evidence if e.get("proficiency")]
     if "extensive" in proficiencies:
         return "Strong"
@@ -165,13 +166,14 @@ def format_response(answer: str, evidence: list[dict], annotations: list[str] | 
             cur = curation[i] if curation and i < len(curation) else None
 
             if cur and cur.get("mode") == "link":
-                # Link mode: GitHub link + architectural explanation, no code block
                 lines.append(f"\n{link}")
                 lines.append(f"> {cur['explanation']}")
             else:
-                # Inline mode: show code with explanation
                 content = e.get("content", "")
+                ctx = e.get("context", "")
                 explanation = cur["explanation"] if cur else (annotations[i] if annotations and i < len(annotations) else "")
+                if not explanation and ctx:
+                    explanation = ctx
                 lines.append(f"\n{link}")
                 if explanation:
                     lines.append(f"> {explanation}")
@@ -241,6 +243,7 @@ class QAAgent:
         return "\n".join(lines)
 
     def _execute_tool(self, name: str, args: dict) -> str:
+        t0 = time.perf_counter()
         dispatch = {
             "search_code": lambda: search_code(args["query"], self.neo4j, self.embed),
             "get_evidence": lambda: get_evidence(args["skill_name"], self.neo4j),
@@ -250,7 +253,15 @@ class QAAgent:
             "get_connected_evidence": lambda: get_connected_evidence(args["skill_name"], args["repo_name"], self.neo4j),
         }
         result = dispatch.get(name, lambda: {"error": f"Unknown tool: {name}"})()
-        return json.dumps(result)
+        serialized = json.dumps(result)
+        latency = int((time.perf_counter() - t0) * 1000)
+
+        result_count = len(result) if isinstance(result, list) else 1
+        logger.log_tool_call(tool_name=name, args=args,
+                             result_size=len(serialized), latency_ms=latency)
+        logger.log_tool_result(tool_name=name, result_count=result_count)
+
+        return serialized
 
     def _collect_entities(self, tool_name: str, args: dict, tool_result: str, entities: set):
         if tool_name == "get_evidence":
@@ -292,28 +303,35 @@ class QAAgent:
         try:
             parsed = json.loads(tool_result)
             if isinstance(parsed, list):
-                evidence.extend(item for item in parsed if "file_path" in item)
+                new = [item for item in parsed if "file_path" in item]
+                evidence.extend(new)
         except (json.JSONDecodeError, TypeError):
             pass
 
     def _annotate_evidence(self, question: str, evidence: list[dict]) -> list[str] | None:
         if not evidence:
             return None
+        logger.debug("agent.annotate", evidence_count=len(evidence))
         snippets = []
         for i, e in enumerate(evidence):
             fp = e.get("file_path", "?")
+            ctx = e.get("context", "")
             preview = "\n".join(e.get("content", "").split("\n")[:8])
-            snippets.append(f"{i + 1}. {fp}\n{preview}")
+            header = f"{i + 1}. {fp}"
+            if ctx:
+                header += f"\nContext: {ctx}"
+            snippets.append(f"{header}\n{preview}")
         user_msg = f"Question: {question}\n\nSnippets:\n" + "\n\n".join(snippets)
         try:
             response = self.chat.chat([
                 {"role": "system", "content": ANNOTATE_PROMPT},
                 {"role": "user", "content": user_msg},
-            ])
+            ], purpose="annotate_evidence")
             raw = _strip_think(response.choices[0].message.content)
             raw = re.sub(r"^```\w*\n|```$", "", raw.strip())
             return json.loads(raw)
-        except (json.JSONDecodeError, Exception):
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning("agent.annotate_failed", error=str(e))
             return None
 
     def _curate_evidence(self, question: str, evidence: list[dict]) -> tuple[list[dict], list[dict] | None]:
@@ -321,29 +339,34 @@ class QAAgent:
         if not evidence:
             return [], None
 
+        logger.info("agent.curate_start", evidence_count=len(evidence))
+
         summaries = []
         for i, e in enumerate(evidence):
             fp = e.get("file_path", "?")
             repo = e.get("repo", "?")
             prof = e.get("proficiency", "?")
             skill = e.get("skill_name", "")
+            ctx = e.get("context", "")
             preview = "\n".join(e.get("content", "").split("\n")[:15])
-            summaries.append(
-                f"[{i}] {repo}/{fp} (proficiency: {prof}{', skill: ' + skill if skill else ''})\n{preview}"
-            )
+            header = f"[{i}] {repo}/{fp} (proficiency: {prof}{', skill: ' + skill if skill else ''})"
+            if ctx:
+                header += f"\nContext: {ctx}"
+            summaries.append(f"{header}\n{preview}")
         user_msg = f"Question: {question}\n\nSnippets:\n\n" + "\n\n".join(summaries)
 
         try:
             response = self.chat.chat([
                 {"role": "system", "content": CURATE_PROMPT},
                 {"role": "user", "content": user_msg},
-            ])
+            ], purpose="curate_evidence")
             raw = _strip_think(response.choices[0].message.content)
             raw = re.sub(r"^```\w*\n|```$", "", raw.strip())
             parsed = json.loads(raw)
-            # Filter to keeps, map back to evidence items
             keeps = [item for item in parsed if item.get("action") == "keep"]
+            dropped = len(parsed) - len(keeps)
             if not keeps:
+                logger.log_curation(kept=0, dropped=len(parsed), total=len(evidence))
                 return evidence[:MAX_EVIDENCE_SHOWN], None
             curated = []
             meta = []
@@ -352,12 +375,15 @@ class QAAgent:
                 if 0 <= idx < len(evidence):
                     curated.append(evidence[idx])
                     meta.append({"mode": k.get("mode", "inline"), "explanation": k.get("explanation", "")})
+            logger.log_curation(kept=len(curated), dropped=dropped, total=len(evidence))
             return curated or evidence[:MAX_EVIDENCE_SHOWN], meta or None
-        except (json.JSONDecodeError, Exception):
-            # Fall back to annotation
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning("agent.curate_failed", error=str(e), fallback="annotate")
             shown = evidence[:MAX_EVIDENCE_SHOWN]
             annotations = self._annotate_evidence(question, shown)
             if annotations:
+                logger.log_curation(kept=len(shown), dropped=0,
+                                    total=len(evidence), fallback=True)
                 return shown, [{"mode": "inline", "explanation": a} for a in annotations]
             return shown, None
 
@@ -377,10 +403,12 @@ class QAAgent:
         ]
         all_evidence = []
 
-        for _ in range(MAX_TOOL_CALLS):
-            response = self.chat.chat(messages, tools=TOOL_DEFINITIONS)
+        for step in range(MAX_TOOL_CALLS):
+            logger.info("agent.react_step", step=step + 1, max_steps=MAX_TOOL_CALLS)
+            response = self.chat.chat(messages, tools=TOOL_DEFINITIONS, purpose="react_loop")
             choice = response.choices[0]
             if not choice.message.tool_calls:
+                logger.info("agent.react_done", step=step + 1, reason="final_answer")
                 sorted_ev = _sort_evidence(all_evidence)
                 curated, curation_meta = self._curate_evidence(question, sorted_ev)
                 return format_response(_strip_think(choice.message.content or ""), curated, curation=curation_meta, total_count=len(all_evidence))
@@ -390,9 +418,17 @@ class QAAgent:
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": result[:MAX_TOOL_RESULT_CHARS]})
                 self._collect_evidence(result, all_evidence)
 
-        response = self.chat.chat(messages)
+        logger.info("agent.react_done", step=MAX_TOOL_CALLS, reason="max_calls_reached")
+        response = self.chat.chat(messages, purpose="react_final")
         sorted_ev = _sort_evidence(all_evidence)
         curated, curation_meta = self._curate_evidence(question, sorted_ev)
+
+        # Log evidence summary
+        repos = {e.get("repo") for e in all_evidence if e.get("repo")}
+        skills = {e.get("skill_name") for e in all_evidence if e.get("skill_name")}
+        logger.log_evidence(collected=len(all_evidence),
+                            unique_repos=len(repos), unique_skills=len(skills))
+
         return format_response(_strip_think(response.choices[0].message.content or ""), curated, curation=curation_meta, total_count=len(all_evidence))
 
     def answer_stream(self, question: str) -> Generator[str | dict, None, None]:
@@ -403,10 +439,12 @@ class QAAgent:
         all_evidence = []
         entities: set[str] = set()
 
-        for _ in range(MAX_TOOL_CALLS):
-            response = self.chat.chat(messages, tools=TOOL_DEFINITIONS)
+        for step in range(MAX_TOOL_CALLS):
+            logger.info("agent.react_step", step=step + 1, max_steps=MAX_TOOL_CALLS)
+            response = self.chat.chat(messages, tools=TOOL_DEFINITIONS, purpose="react_loop")
             choice = response.choices[0]
             if not choice.message.tool_calls:
+                logger.info("agent.react_done", step=step + 1, reason="final_answer")
                 break
             messages.append(self._assistant_msg(choice))
             for tc in choice.message.tool_calls:
@@ -417,13 +455,22 @@ class QAAgent:
                 self._collect_evidence(result, all_evidence)
                 self._collect_entities(tc.function.name, args, result, entities)
         else:
-            response = self.chat.chat(messages)
+            logger.info("agent.react_done", step=MAX_TOOL_CALLS, reason="max_calls_reached")
+            response = self.chat.chat(messages, purpose="react_final")
             choice = response.choices[0]
 
         if entities:
             subgraph = get_subgraph(self.neo4j, list(entities))
             if subgraph["nodes"]:
+                logger.debug("agent.subgraph", node_count=len(subgraph["nodes"]),
+                              edge_count=len(subgraph["edges"]))
                 yield subgraph
+
+        # Log evidence summary
+        repos = {e.get("repo") for e in all_evidence if e.get("repo")}
+        skills = {e.get("skill_name") for e in all_evidence if e.get("skill_name")}
+        logger.log_evidence(collected=len(all_evidence),
+                            unique_repos=len(repos), unique_skills=len(skills))
 
         sorted_ev = _sort_evidence(all_evidence)
         curated, curation_meta = self._curate_evidence(question, sorted_ev)

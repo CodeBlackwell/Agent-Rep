@@ -1,8 +1,11 @@
 from pathlib import Path
 
+from src.core import logger
 from src.ingestion.code_parser import parse_file
+from src.ingestion.context_generator import generate_contexts
 from src.ingestion.git_dates import get_chunk_dates
 from src.ingestion.skill_classifier import classify_chunks
+from src.ingestion.skill_taxonomy import ALL_SKILLS
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".env", "dist", "build", ".next"}
 CODE_EXTENSIONS = {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rs", ".rb", ".cpp", ".c", ".h"}
@@ -25,6 +28,8 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
     repo_path = Path(repo_path)
     repo_name = repo_path.name
     file_count = 0
+
+    logger.info("graph.build_start", repo=repo_name)
 
     with neo4j_client.driver.session() as session:
         session.run(
@@ -54,6 +59,8 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
             ).single()["c"]
             if existing >= len(chunks):
                 file_count += 1
+                logger.debug("graph.file_skip", file=rel_path, reason="already_embedded",
+                              chunk_count=len(chunks))
                 # Still classify skills for existing chunks
                 skills_per_chunk = classify_chunks(chunks, chat_client)
                 for chunk, chunk_skills in zip(chunks, skills_per_chunk):
@@ -61,36 +68,47 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
                 continue
 
             # Classify first so skills are available for preamble
+            logger.debug("graph.classify", file=rel_path, chunk_count=len(chunks))
             skills_per_chunk = classify_chunks(chunks, chat_client)
 
-            # Embed with contextual preamble
-            texts = [
-                build_preamble(c.name, c.language, rel_path, repo_name, list(skills))
-                + "\nCode:\n" + c.content
+            # Generate contextual descriptions
+            snippet_dicts = [
+                {"name": c.name, "file_path": rel_path, "content": c.content,
+                 "language": c.language, "repo": repo_name, "skills": list(skills)}
                 for c, skills in zip(chunks, skills_per_chunk)
+            ]
+            contexts = generate_contexts(snippet_dicts, chat_client,
+                                         skills_list=", ".join(ALL_SKILLS))
+
+            # Embed with context + metadata preamble + code
+            texts = [
+                (ctx + "\n" if ctx else "")
+                + build_preamble(c.name, c.language, rel_path, repo_name, list(skills))
+                + "\nCode:\n" + c.content
+                for c, skills, ctx in zip(chunks, skills_per_chunk, contexts)
             ]
             embeddings = embed_client.embed(texts)
 
-            for chunk, embedding, chunk_skills in zip(chunks, embeddings, skills_per_chunk):
+            for chunk, embedding, chunk_skills, ctx in zip(chunks, embeddings, skills_per_chunk, contexts):
                 session.run(
                     "MATCH (f:File {path: $file_path}) "
                     "MERGE (cs:CodeSnippet {name: $name, file_path: $file_path}) "
                     "SET cs.content = $content, cs.start_line = $start, "
                     f"    cs.end_line = $end, cs.language = $lang, "
-                    f"    cs.{embed_prop} = $embedding "
+                    f"    cs.{embed_prop} = $embedding, cs.context = $ctx "
                     "MERGE (f)-[:CONTAINS]->(cs)",
                     file_path=rel_path, name=chunk.name,
                     content=chunk.content, start=chunk.start_line,
                     end=chunk.end_line, lang=chunk.language,
-                    embedding=embedding,
+                    embedding=embedding, ctx=ctx,
                 )
                 _link_chunk_skills(session, chunk, rel_path, chunk_skills, repo_path)
 
             file_count += 1
             if file_count % 25 == 0:
-                print(f"  {file_count} files processed")
+                logger.info("graph.progress", repo=repo_name, files_processed=file_count)
 
-    print(f"  {file_count} files total")
+    logger.info("graph.build_done", repo=repo_name, files_total=file_count)
     neo4j_client.compute_repo_rollups(repo_name)
     neo4j_client.compute_proficiency()
 

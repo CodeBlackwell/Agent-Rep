@@ -4,29 +4,57 @@ from types import SimpleNamespace
 
 import anthropic
 
+from src.core import logger
+
 
 class ClaudeChatClient:
     def __init__(self, api_key: str, model: str = "claude-sonnet-4-20250514"):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
 
-    def chat(self, messages: list[dict], tools: list[dict] | None = None) -> SimpleNamespace:
+    def chat(self, messages: list[dict], tools: list[dict] | None = None,
+             purpose: str = "") -> SimpleNamespace:
         system, converted = _convert_messages(messages)
         kwargs = {"model": self.model, "max_tokens": 4096, "messages": converted}
         if system:
             kwargs["system"] = system
         if tools:
             kwargs["tools"] = _convert_tools(tools)
+
+        logger.debug("llm.request", provider="anthropic", model=self.model,
+                      purpose=purpose, message_count=len(converted),
+                      has_tools=bool(tools))
+
         for attempt in range(10):
             try:
+                t0 = time.perf_counter()
                 response = self.client.messages.create(**kwargs)
-                return _shape_response(response)
+                latency = int((time.perf_counter() - t0) * 1000)
+
+                shaped = _shape_response(response)
+                tc_count = len(shaped.choices[0].message.tool_calls or [])
+
+                logger.log_llm_call(
+                    provider="anthropic", model=self.model,
+                    input_tokens=response.usage.input_tokens,
+                    output_tokens=response.usage.output_tokens,
+                    latency_ms=latency, purpose=purpose,
+                    tool_calls=tc_count,
+                    stop_reason=response.stop_reason,
+                )
+                return shaped
+
             except anthropic.RateLimitError:
                 wait = min(2 ** attempt * 5, 120)
-                print(f"  Claude rate limited (attempt {attempt + 1}/10), waiting {wait}s...")
+                logger.log_llm_retry(provider="anthropic", attempt=attempt + 1,
+                                     wait_s=wait)
                 time.sleep(wait)
                 if attempt == 9:
                     raise
+            except Exception as e:
+                logger.log_llm_error(provider="anthropic", error=str(e),
+                                     purpose=purpose)
+                raise
 
 
 def _convert_messages(messages: list[dict]) -> tuple[str, list[dict]]:
