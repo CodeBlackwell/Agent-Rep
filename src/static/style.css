@@ -959,8 +959,20 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 .jd-results__header { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; }
 .jd-results__pct { font-family: "Cormorant Garamond", Georgia, serif; font-size: 2.4rem; font-weight: 600; color: var(--ink); line-height: 1; }
 .jd-results__label { font-size: 0.85rem; color: var(--ink-faint); }
-.jd-results__summary { font-size: 0.85rem; color: var(--ink-light); line-height: 1.55; margin-bottom: 1rem; }
+.jd-results__summary { font-size: 0.85rem; color: var(--ink-light); line-height: 1.55; margin-bottom: 0.6rem; }
 .jd-results__error { color: #b05a4f; font-size: 0.85rem; }
+
+.jd-accordion {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%;
+  padding: 0.55rem 0; border: none; border-top: 1px solid #ebe6df;
+  background: none; cursor: pointer; font-family: inherit; text-align: left;
+}
+.jd-accordion__title { font-size: 0.82rem; font-weight: 400; color: var(--ink); }
+.jd-accordion__meta { display: flex; gap: 0.3rem; margin-left: auto; }
+.jd-accordion__arrow { font-size: 0.7rem; color: var(--ink-faint); transition: transform 0.2s; }
+.jd-accordion--open .jd-accordion__arrow { transform: rotate(90deg); }
+.jd-accordion__body { padding-bottom: 0.4rem; }
+
 .jd-results__reqs { display: flex; flex-direction: column; gap: 0.4rem; }
 
 .jd-req { padding: 0.4rem 0; border-bottom: 1px solid #ebe6df; }
