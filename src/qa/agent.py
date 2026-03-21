@@ -486,11 +486,20 @@ class QAAgent:
 
         return format_response(_trim_answer(_strip_think(response.choices[0].message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence))
 
-    def answer_stream(self, question: str) -> Generator[str | dict, None, None]:
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": question},
-        ]
+    def answer_stream(self, question: str,
+                       history: list[dict] | None = None) -> Generator[str | dict, None, None]:
+        """Run the ReAct loop and yield status messages, graph data, and the final response.
+
+        Args:
+            question: The user's current question.
+            history: Prior conversation turns as [{"role": "user"/"assistant", "content": "..."}].
+                     Injected between the system prompt and the new question so the model
+                     can resolve references like "tell me more about that".
+        """
+        messages = [{"role": "system", "content": self.system_prompt}]
+        if history:
+            messages.extend(history)
+        messages.append({"role": "user", "content": question})
         all_evidence = []
         entities: set[str] = set()
 

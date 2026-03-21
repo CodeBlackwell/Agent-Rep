@@ -29,5 +29,5 @@ class Settings:
             embed_provider=os.getenv("EMBED_PROVIDER", "nim"),
             voyage_api_key=os.getenv("VOYAGE_API_KEY", ""),
             chat_provider=os.getenv("CHAT_PROVIDER", "nim"),
-            claude_model=os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514"),
+            claude_model=os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001"),
         )

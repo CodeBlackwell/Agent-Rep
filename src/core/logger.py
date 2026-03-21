@@ -23,7 +23,7 @@ from pathlib import Path
 COST_PER_M_TOKENS: dict[str, dict[str, float]] = {
     # Anthropic
     "claude-sonnet-4-20250514": {"input": 3.0, "output": 15.0},
-    "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.0},
+    "claude-haiku-4-5-20251001": {"input": 1.0, "output": 5.0},
     # NVIDIA NIM (free tier)
     "nvidia/llama-3.3-nemotron-super-49b-v1.5": {"input": 0.0, "output": 0.0},
     "nvidia/llama-3.2-nv-embedqa-1b-v2": {"input": 0.0, "output": 0.0},
@@ -198,9 +198,9 @@ def log_context_gen(*, batch_size: int, success: int, failed: int, latency_ms: i
               failed=failed, latency_ms=latency_ms)
 
 
-def log_request(*, method: str, path: str, query: str = "", status: int = 200, latency_ms: int = 0):
+def log_request(*, method: str, path: str, query: str = "", status: int = 200, latency_ms: int = 0, **extra):
     _log.info("http.request", method=method, path=path, query=query,
-              status=status, latency_ms=latency_ms)
+              status=status, latency_ms=latency_ms, **extra)
 
 
 # ---------------------------------------------------------------------------

@@ -2,6 +2,8 @@ const messages = document.getElementById('messages');
 const form = document.getElementById('chat-form');
 const input = document.getElementById('chat-input');
 
+let sessionId = null;
+
 function renderMarkdown(text) {
   return text
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
@@ -44,7 +46,17 @@ form.addEventListener('submit', e => {
   const loader = addLoading();
   let assistantDiv = null;
 
-  const source = new EventSource(`/api/chat?q=${encodeURIComponent(q)}`);
+  let url = `/api/chat?q=${encodeURIComponent(q)}`;
+  if (sessionId) {
+    url += `&session_id=${encodeURIComponent(sessionId)}`;
+  }
+
+  const source = new EventSource(url);
+
+  source.addEventListener('session', event => {
+    const data = JSON.parse(event.data);
+    sessionId = data.session_id;
+  });
 
   source.addEventListener('graph', event => {
     window.updateGraph(JSON.parse(event.data));
