@@ -277,12 +277,18 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     display: block;
   }
 
-  /* After first question: left-col hidden, graph-panel becomes sole container */
+  /* Before first query: hero + chat visible, graph panel hidden */
+  #graph-panel {
+    display: none !important;
+  }
+
+  /* After first question: flip — hide left-col, show graph-panel as sole container */
   .hero-faded .left-col {
-    display: none;
+    display: none !important;
   }
 
   .hero-faded #graph-panel {
+    display: flex !important;
     flex: 1;
     max-height: none;
   }

@@ -929,7 +929,6 @@ new ResizeObserver(() => {
 }).observe(document.getElementById('graph-container'));
 
 initSVG();
-// On mobile, start with Chat tab active (DOM relocation happens after hero-faded)
 syncToggle(isMobile ? 'chat' : activeMode);
 updateLegend(activeMode);
 renderers[activeMode].init(svg, dims);
