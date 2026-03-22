@@ -230,8 +230,9 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   text-shadow: 0 1px 8px rgba(245, 240, 235, 0.8);
 }
 
-/* Chat tab button — hidden on desktop */
+/* Chat tab button + mobile note — hidden on desktop */
 .viz-toggle__btn--mobile-only { display: none; }
+.mobile-viz-note { display: none; }
 
 /* ── Mobile: tablets & small laptops ────────── */
 @media (max-width: 768px) {
@@ -272,9 +273,22 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     transition: max-height 0.6s ease, padding 0.6s ease, opacity 0.5s ease, margin 0.6s ease;
   }
 
-  /* Show the Chat tab button on mobile */
-  .viz-toggle__btn--mobile-only {
+  /* Mobile: chat only, no graph views */
+  .viz-toggle,
+  #graph-container,
+  .graph-filter,
+  .graph-empty,
+  .legend {
+    display: none !important;
+  }
+
+  .mobile-viz-note {
     display: block;
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    padding: 0.3rem 0;
+    opacity: 0.6;
   }
 
   /* Before first query: hero + chat visible, graph panel hidden */
