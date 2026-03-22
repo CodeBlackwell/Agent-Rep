@@ -1,6 +1,6 @@
 # PROVE — portfolio AI agent
 prove.codeblackwell.ai {
-	# Serve static files directly from Caddy with pre-compression
+	# Static assets: serve directly from filesystem with pre-compression
 	handle /static/* {
 		root * /srv/app
 		file_server {
@@ -12,10 +12,15 @@ prove.codeblackwell.ai {
 		header @unversioned Cache-Control "public, max-age=604800"
 	}
 
+	# API: no caching
+	handle /api/* {
+		reverse_proxy app:7860
+		header Cache-Control "no-store"
+	}
+
 	# Everything else proxied to FastAPI
 	handle {
 		reverse_proxy app:7860
-		header @api Cache-Control "no-store"
 	}
 
 	header {
