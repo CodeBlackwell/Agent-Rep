@@ -89,14 +89,32 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
             logger.debug("graph.classify", file=rel_path, chunk_count=len(chunks))
             skills_per_chunk = classify_chunks(chunks, chat_client)
 
-            # Generate contextual descriptions
-            snippet_dicts = [
-                {"name": c.name, "file_path": rel_path, "content": c.content,
-                 "language": c.language, "repo": repo_name, "skills": list(skills)}
-                for c, skills in zip(chunks, skills_per_chunk)
+            # Generate contextual descriptions (reuse existing if available)
+            existing_contexts = session.run(
+                "MATCH (cs:CodeSnippet {file_path: $fp}) "
+                "RETURN cs.name AS name, cs.context AS context",
+                fp=rel_path,
+            ).data()
+            ctx_map = {r["name"]: r["context"] for r in existing_contexts if r["context"]}
+
+            needs_context = [
+                (i, c, skills)
+                for i, (c, skills) in enumerate(zip(chunks, skills_per_chunk))
+                if c.name not in ctx_map
             ]
-            contexts = generate_contexts(snippet_dicts, chat_client,
-                                         skills_list=", ".join(ALL_SKILLS))
+
+            contexts = [ctx_map.get(c.name, "") for c in chunks]
+
+            if needs_context:
+                snippet_dicts = [
+                    {"name": c.name, "file_path": rel_path, "content": c.content,
+                     "language": c.language, "repo": repo_name, "skills": list(skills)}
+                    for _, c, skills in needs_context
+                ]
+                new_contexts = generate_contexts(snippet_dicts, chat_client,
+                                                 skills_list=", ".join(ALL_SKILLS))
+                for (i, _, _), ctx in zip(needs_context, new_contexts):
+                    contexts[i] = ctx
 
             # Embed with context + metadata preamble + code
             texts = [
