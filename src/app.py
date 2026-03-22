@@ -89,6 +89,7 @@ def index(request: Request):
     return templates.TemplateResponse("index.html", {
         "request": request, "name": name,
         "github_owner": settings.github_owner,
+        "cdn_base": settings.cdn_base,
     })
 
 

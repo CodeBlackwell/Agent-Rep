@@ -10,3 +10,9 @@ repos/
 dump/
 ralph.py
 ralph_timing.log
+
+# Terraform
+infra/terraform.tfstate*
+infra/.terraform/
+infra/terraform.tfvars
+infra/*.auto.tfvars
