@@ -260,27 +260,117 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
   /* Close the gap between hero and chat — merge into one visual block */
   .hero {
-    padding: 0.8rem 1rem;
-    border-radius: 12px 12px 0 0;
+    padding: 0.6rem 0.8rem;
+    border-radius: 10px 10px 0 0;
     background: rgba(234, 213, 182, 0.82);
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.6s ease, padding 0.6s ease, opacity 0.5s ease, margin 0.6s ease;
+  }
+
+  /* After first question: fade hero, reclaim space for chat + viz */
+  .hero-faded .hero {
+    max-height: 0;
+    padding: 0;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .hero-faded #chat-panel {
+    flex: 1;
+    border-radius: 10px;
+    min-height: 0;
+  }
+
+  .hero-faded #graph-panel {
+    flex: 0 0 auto;
+    max-height: 55vh;
+    overflow-y: auto;
   }
 
   #chat-panel {
     flex: 1;
     min-height: 0;
-    padding: 0.8rem 1rem;
-    border-radius: 0 0 12px 12px;
+    padding: 0.5rem 0.6rem;
+    border-radius: 0 0 10px 10px;
     border-top: 1px solid rgba(212, 205, 196, 0.3);
     background: rgba(250, 247, 242, 0.78);
     overflow-y: auto;
+    transition: flex 0.6s ease, border-radius 0.4s ease;
   }
 
   #graph-panel {
     min-height: 0;
     max-height: 40dvh;
-    margin-top: 0.75rem;
+    margin-top: 0.4rem;
+    padding: 0;
+    border-radius: 10px;
     background: rgba(250, 247, 242, 0.78);
     overflow-y: auto;
+    transition: flex 0.6s ease, max-height 0.6s ease;
+  }
+
+  #graph-container {
+    min-height: 180px;
+  }
+
+  .viz-toggle {
+    padding: 0.2rem 0.4rem;
+    border-bottom: none;
+  }
+
+  .viz-toggle__btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.68rem;
+  }
+
+  .legend {
+    padding: 0.15rem 0.4rem;
+    gap: 0.4rem;
+    font-size: 0.62rem;
+  }
+
+  .legend-note {
+    display: none;
+  }
+
+  .graph-filter {
+    padding: 0.25rem 0.4rem;
+    gap: 0.25rem;
+  }
+
+  .filter-pill {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.62rem;
+  }
+
+  .msg {
+    margin-bottom: 0.6rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .msg-assistant pre {
+    padding: 0.4rem 0.6rem;
+    margin: 0.3rem 0;
+    font-size: 0.78rem;
+  }
+
+  #chat-form {
+    padding-top: 0.4rem;
+    gap: 0.3rem;
+  }
+
+  #chat-input {
+    font-size: 0.85rem;
+    padding: 0.3rem 0;
+  }
+
+  .jd-btn {
+    width: 26px;
+    height: 26px;
+    margin-bottom: 0.15rem;
   }
 
   /* Collapse graph container until data arrives */
@@ -410,32 +500,42 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   }
 
   .hero {
-    padding: 0.6rem 0.8rem;
+    padding: 0.4rem 0.6rem;
   }
 
   .hero__name {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
   }
 
   .hero__tagline {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
   }
 
   .hero__intro {
-    font-size: 0.88rem;
-    line-height: 1.5;
+    font-size: 0.82rem;
+    line-height: 1.4;
   }
 
   #chat-panel {
-    padding: 0.6rem 0.8rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  #chat-form {
+    padding-top: 0.3rem;
   }
 
   #chat-input {
     font-size: 16px; /* prevents iOS zoom on focus */
+    padding: 0.2rem 0;
   }
 
   #graph-panel {
-    margin-top: 0.5rem;
+    margin-top: 0.3rem;
+  }
+
+  .msg {
+    margin-bottom: 0.5rem;
+    font-size: 0.82rem;
   }
 
   /* Tap targets — full 48px minimum */
@@ -449,21 +549,15 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     height: 48px;
   }
 
-  /* Messages */
-  .msg {
-    margin-bottom: 1rem;
-  }
-
   .msg-assistant pre {
-    padding: 0.5rem 0.7rem;
-    font-size: 0.82rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.75rem;
   }
 
-  /* Legend wrapping */
   .legend {
-    gap: 0.6rem;
-    padding: 0.6rem 0.8rem;
-    font-size: 0.78rem;
+    padding: 0.25rem 0.5rem;
+    gap: 0.4rem;
+    font-size: 0.65rem;
   }
 
   /* JD modal */
@@ -549,6 +643,24 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 }
 
 .msg-assistant pre code { background: none; padding: 0; color: var(--ink); }
+
+.msg-assistant h3, .msg-assistant h4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0.8rem 0 0.3rem;
+}
+.msg-assistant h3 { font-size: 1.1rem; }
+.msg-assistant h4 { font-size: 0.95rem; }
+
+.msg-assistant .mermaid {
+  margin: 0.6rem 0;
+  overflow-x: auto;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+.msg-assistant .mermaid svg { max-width: 100%; height: auto; }
 
 #chat-form {
   display: flex;

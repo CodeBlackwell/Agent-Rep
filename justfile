@@ -1,5 +1,6 @@
 dev:
-    -lsof -ti :7860 | xargs kill 2>/dev/null && sleep 1
+    -lsof -ti :7860 | xargs kill 2>/dev/null
+    @docker compose up -d --wait 2>/dev/null || true
     CHAT_PROVIDER=anthropic EMBED_PROVIDER=voyage uv run uvicorn src.app:app --port 7860 --reload
 
 optimize-svg:

@@ -472,12 +472,14 @@ const TreemapRenderer = {
       })
       .sort((a, b) => (b.value || 0) - (a.value || 0));
 
-    const pad = 14;
+    const mobile = dims.width < 400;
+    const pad = mobile ? 4 : 14;
     d3.treemap()
       .size([dims.width - pad * 2, dims.height - pad * 2])
-      .paddingOuter(6)
-      .paddingTop(22)
-      .paddingInner(3)
+      .paddingOuter(mobile ? 2 : 6)
+      .paddingTop(mobile ? 14 : 22)
+      .paddingInner(mobile ? 2 : 3)
+      .tile(d3.treemapSquarify.ratio(mobile ? 1.2 : 1.618))
       .round(true)
       (root);
 
@@ -508,15 +510,19 @@ const TreemapRenderer = {
       .data(allNodes.filter(d => d.children), d => d.data.name)
       .join('text')
       .attr('class', 'treemap-group-label')
-      .attr('x', d => d.x0 + 6)
-      .attr('y', d => d.y0 + 15)
-      .style('font-size', d => d.depth === 1 ? '0.72rem' : '0.65rem')
+      .attr('x', d => d.x0 + (mobile ? 3 : 6))
+      .attr('y', d => d.y0 + (mobile ? 12 : 15))
+      .style('font-size', d => mobile
+        ? (d.depth === 1 ? '0.58rem' : '0.5rem')
+        : (d.depth === 1 ? '0.72rem' : '0.65rem'))
       .style('fill', '#8a8380')
       .style('font-weight', d => d.depth === 1 ? '400' : '300')
       .text(d => {
         const w = d.x1 - d.x0;
-        if (w < 40) return '';
-        const maxChars = Math.floor(w / 7);
+        const h = d.y1 - d.y0;
+        if (w < 30 || h < (mobile ? 14 : 20)) return '';
+        const charW = mobile ? 5.5 : 7;
+        const maxChars = Math.floor(w / charW);
         return d.data.name.length > maxChars ? d.data.name.slice(0, maxChars - 1) + '…' : d.data.name;
       });
 
@@ -564,10 +570,11 @@ const TreemapRenderer = {
       .data(leaves, d => d.data.name)
       .join('text')
       .attr('class', 'treemap-label')
-      .attr('x', d => d.x0 + 4)
-      .attr('y', d => d.y0 + (d.y1 - d.y0) / 2 + 4)
+      .attr('x', d => d.x0 + (mobile ? 3 : 4))
+      .attr('y', d => d.y0 + (d.y1 - d.y0) / 2 + (mobile ? 3 : 4))
       .style('font-size', d => {
         const w = d.x1 - d.x0;
+        if (mobile) return w > 60 ? '0.58rem' : '0.48rem';
         return w > 80 ? '0.72rem' : '0.6rem';
       })
       .style('fill', d => d.data.status === 'demonstrated' ? '#fff' : '#4a4a4a')
@@ -575,8 +582,11 @@ const TreemapRenderer = {
       .text(d => {
         const w = d.x1 - d.x0;
         const h = d.y1 - d.y0;
-        if (w < 30 || h < 16) return '';
-        const maxChars = Math.floor(w / 6.5);
+        const minH = mobile ? 12 : 16;
+        const minW = mobile ? 24 : 30;
+        if (w < minW || h < minH) return '';
+        const charW = mobile ? 5 : 6.5;
+        const maxChars = Math.floor(w / charW);
         return d.data.name.length > maxChars ? d.data.name.slice(0, maxChars - 1) + '…' : d.data.name;
       });
   },
@@ -604,12 +614,15 @@ const BarRenderer = {
     const skills = getSkillList(state);
     if (skills.length === 0) return;
 
-    const margin = { top: 16, right: 20, bottom: 16, left: 10 };
+    const mobile = dims.width < 400;
+    const margin = mobile
+      ? { top: 10, right: 12, bottom: 10, left: 6 }
+      : { top: 16, right: 20, bottom: 16, left: 10 };
     const w = dims.width - margin.left - margin.right;
-    const barH = Math.min(28, Math.max(18, (dims.height - margin.top - margin.bottom) / skills.length - 4));
-    const gap = 4;
+    const barH = Math.min(mobile ? 20 : 28, Math.max(mobile ? 14 : 18, (dims.height - margin.top - margin.bottom) / skills.length - (mobile ? 2 : 4)));
+    const gap = mobile ? 2 : 4;
     const totalH = skills.length * (barH + gap);
-    const labelW = Math.min(140, w * 0.35);
+    const labelW = Math.min(mobile ? 100 : 140, w * 0.35);
     const barW = w - labelW - 50; // reserve space for count label
 
     const maxEv = Math.max(1, ...skills.map(s => s.evidence_count));
@@ -619,15 +632,39 @@ const BarRenderer = {
 
     skills.forEach((skill, i) => {
       const y = i * (barH + gap);
-      const row = gInner.append('g').attr('class', 'bar-row');
+      const row = gInner.append('g')
+        .attr('class', 'bar-row')
+        .style('cursor', skill.status === 'demonstrated' ? 'pointer' : 'default');
+
+      // Invisible hit area — full row width for easy tapping on mobile
+      row.append('rect')
+        .attr('x', 0)
+        .attr('y', y)
+        .attr('width', w)
+        .attr('height', barH)
+        .style('fill', 'transparent')
+        .on('mouseover', (evt) => {
+          showTooltip(evt, tipHtml(skill));
+          row.select('.bar-fill').style('opacity', 1);
+        })
+        .on('mouseout', () => {
+          hideTooltip();
+          row.select('.bar-fill').style('opacity', 0.85);
+        })
+        .on('click', (evt) => {
+          evt.stopPropagation();
+          hideTooltip();
+          if (skill.status === 'demonstrated') openRefModal(skill.name);
+        });
 
       // Skill name label
       row.append('text')
         .attr('x', labelW - 6)
         .attr('y', y + barH / 2 + 4)
         .attr('text-anchor', 'end')
-        .style('font-size', '0.75rem')
+        .style('font-size', mobile ? '0.6rem' : '0.75rem')
         .style('fill', skill.status === 'gap' ? '#b05a4f' : skill.status === 'claimed_only' ? '#8a8380' : '#3d3d3d')
+        .style('pointer-events', 'none')
         .text(() => {
           const maxChars = Math.floor(labelW / 7);
           return skill.name.length > maxChars ? skill.name.slice(0, maxChars - 1) + '…' : skill.name;
@@ -635,9 +672,10 @@ const BarRenderer = {
 
       // Bar
       const barX = labelW;
-      const barWidth = skill.evidence_count > 0 ? x(skill.evidence_count) : barW * 0.04; // min visible width
+      const barWidth = skill.evidence_count > 0 ? x(skill.evidence_count) : barW * 0.04;
 
       row.append('rect')
+        .attr('class', 'bar-fill')
         .attr('x', barX)
         .attr('y', y)
         .attr('width', 0)
@@ -648,19 +686,7 @@ const BarRenderer = {
         .style('stroke-width', skill.status !== 'demonstrated' ? 1 : 0)
         .style('stroke-dasharray', skill.status === 'gap' ? '3 2' : 'none')
         .style('opacity', 0.85)
-        .on('mouseover', (evt) => {
-          showTooltip(evt, tipHtml(skill));
-          d3.select(evt.target).style('opacity', 1);
-        })
-        .on('mouseout', (evt) => {
-          hideTooltip();
-          d3.select(evt.target).style('opacity', 0.85);
-        })
-        .on('click', (evt) => {
-          evt.stopPropagation();
-          hideTooltip();
-          if (skill.status === 'demonstrated') openRefModal(skill.name);
-        })
+        .style('pointer-events', 'none')
         .transition().duration(500).delay(i * 60).ease(d3.easeCubicOut)
         .attr('width', barWidth);
 
@@ -678,10 +704,11 @@ const BarRenderer = {
       }
     });
 
-    // Adjust viewBox if content exceeds panel height
+    // Always size the viewBox to fit content
     const neededH = totalH + margin.top + margin.bottom;
-    if (neededH > dims.height) {
-      svg.attr('viewBox', `0 0 ${dims.width} ${neededH}`);
+    svg.attr('viewBox', `0 0 ${dims.width} ${neededH}`);
+    if (mobile) {
+      document.getElementById('graph-container').style.height = neededH + 'px';
     }
   },
 
@@ -771,7 +798,8 @@ function getViewState() {
 /* ── Orchestrator ───────────────────────────────────────────── */
 
 const renderers = { treemap: TreemapRenderer, bars: BarRenderer };
-let activeMode = 'treemap';
+const isMobile = window.innerWidth < 768;
+let activeMode = isMobile ? 'bars' : 'treemap';
 const state = new GraphState();
 let svg = null;
 let dims = { width: 400, height: 400 };
@@ -809,6 +837,7 @@ function renderCurrent() {
   const r = renderers[activeMode];
   if (!r._root) r.init(svg, dims);
   r.render(viewState, dims);
+
 }
 
 document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
@@ -821,6 +850,10 @@ new ResizeObserver(() => {
 }).observe(document.getElementById('graph-container'));
 
 initSVG();
+// Sync toggle buttons to initial mode (bars on mobile)
+document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
+  btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === activeMode);
+});
 updateLegend(activeMode);
 renderers[activeMode].init(svg, dims);
 

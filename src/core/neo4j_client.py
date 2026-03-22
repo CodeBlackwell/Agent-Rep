@@ -145,7 +145,7 @@ class Neo4jClient:
             "WITH r, files, "
             "collect({skill: s.name, proficiency: s.proficiency, "
             "snippet_count: d.snippet_count, total_lines: d.total_lines}) AS skills "
-            "RETURN r.name AS name, r.path AS path, "
+            "RETURN r.name AS name, r.path AS path, r.architecture AS architecture, "
             "size(files) AS file_count, files[..20] AS sample_files, "
             "skills[..10] AS top_skills"
         )

@@ -34,6 +34,14 @@ def _merge_entity(entities: dict[str, EntityRef], ref: EntityRef):
 SYSTEM_PROMPT_TEMPLATE = (
     "You are a QA agent representing {name}'s software engineering portfolio. "
     "You have access to their resume data and code repositories indexed with vector embeddings.\n\n"
+    "NAME RULES (STRICT):\n"
+    "- Refer to the engineer as \"Le\" or \"LeChristopher\" ONLY.\n"
+    "- NEVER use \"Christopher\", \"Chris\", or any other abbreviation.\n"
+    "- Never write the name in ALL CAPS.\n\n"
+    "SELF-AWARENESS:\n"
+    "- The PROVE repository IS this application — the portfolio agent you are running inside.\n"
+    "- If asked 'how did Le build this' or 'how does this app work', use get_repo_overview "
+    "and get_connected_evidence on the PROVE repo to explain the architecture.\n\n"
     "Skills use a 3-tier hierarchy (Domain > Category > Skill) with proficiency levels "
     "(extensive, moderate, minimal, none) based on code evidence.\n\n"
     "{skill_inventory}\n\n"
@@ -41,17 +49,22 @@ SYSTEM_PROMPT_TEMPLATE = (
     "- For broad questions ('what skills?', 'strengths?'), highlight the STRONGEST skills "
     "(extensive proficiency, highest evidence counts) using get_evidence.\n"
     "- For specific skill questions, use get_evidence for that skill, then search_code for depth.\n"
-    "- For architecture/system-design questions, use get_repo_overview to see how a repo is "
-    "structured, then get_connected_evidence to show multi-file implementations.\n"
+    "- For 'how did Le build X' or architecture questions, use get_repo_overview first — it "
+    "includes a pre-written architecture summary with a mermaid diagram. Include that diagram "
+    "and summary in your answer verbatim (do not regenerate it). Then use get_connected_evidence "
+    "for additional depth on specific components.\n"
     "- For work history, use search_resume.\n"
     "- For gap analysis, use find_gaps.\n"
     "- Prefer skills with 'extensive' proficiency and high evidence counts.\n"
     "- Always make at least 2 tool calls before answering.\n\n"
-    "ANSWER FORMAT (STRICT):\n"
-    "Write EXACTLY 2-3 short sentences. Name specific repos. No bullet points, no headers, "
-    "no code, no lists, no categories, no subsections. Never write the engineer's name in ALL CAPS. "
-    "A curated evidence section is appended automatically — do NOT preview or summarize it. "
-    "Your ONLY job: a brief narrative of what was built and where. "
+    "ANSWER FORMAT:\n"
+    "For SKILL questions: Write EXACTLY 2-3 short sentences. Name specific repos. "
+    "No bullet points, no headers, no code, no lists. "
+    "A curated evidence section is appended automatically — do NOT preview or summarize it.\n"
+    "For ARCHITECTURE questions ('how did Le build...', 'explain the architecture of...'): "
+    "Write a detailed explanation with a ```mermaid flowchart or sequence diagram. "
+    "Use headers, describe key components, data flows, and design decisions. "
+    "Be thorough — this is a technical deep-dive, not a summary.\n"
     "If no evidence exists, say so."
 )
 
@@ -63,10 +76,13 @@ def _strip_think(text: str) -> str:
 def _trim_answer(text: str, max_sentences: int = 4) -> str:
     """Trim verbose LLM answers to the first paragraph or max_sentences.
 
-    If the LLM ignores the brevity instruction and produces headers, bullets,
-    or multiple paragraphs, keep only the opening narrative.
+    Architecture responses (containing mermaid diagrams or multiple headers)
+    are returned untrimmed since they are intentionally detailed.
     """
     if not text:
+        return text
+    # Never trim architecture responses with mermaid diagrams
+    if "```mermaid" in text:
         return text
     # If it contains markdown headers or bullet lists, take only the first paragraph
     if "\n#" in text or "\n-" in text or "\n*" in text:
@@ -219,7 +235,7 @@ TOOL_DEFINITIONS = [
 ]
 
 MAX_TOOL_CALLS = 4
-MAX_TOOL_RESULT_CHARS = 4000
+MAX_TOOL_RESULT_CHARS = 8000
 
 
 def _github_link(e: dict, github_owner: str = "codeblackwell") -> str:

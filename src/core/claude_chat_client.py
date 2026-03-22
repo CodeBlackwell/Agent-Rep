@@ -15,7 +15,7 @@ class ClaudeChatClient:
     def chat(self, messages: list[dict], tools: list[dict] | None = None,
              purpose: str = "") -> SimpleNamespace:
         system, converted = _convert_messages(messages)
-        kwargs = {"model": self.model, "max_tokens": 4096, "messages": converted}
+        kwargs = {"model": self.model, "max_tokens": 8192, "messages": converted}
         if system:
             kwargs["system"] = system
         if tools:

@@ -109,12 +109,15 @@ def get_repo_overview(repo_name: str, neo4j_client: Neo4jClient) -> dict:
     result = neo4j_client.get_repo_overview(repo_name)
     if not result:
         return {"error": f"Repository '{repo_name}' not found"}
-    return {
+    overview = {
         "name": result["name"],
         "file_count": result["file_count"],
         "sample_files": result["sample_files"],
         "top_skills": result["top_skills"],
     }
+    if result.get("architecture"):
+        overview["architecture"] = result["architecture"]
+    return overview
 
 
 def get_connected_evidence(skill_name: str, repo_name: str, neo4j_client: Neo4jClient) -> list[dict]:

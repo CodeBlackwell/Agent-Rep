@@ -3,6 +3,7 @@ const form = document.getElementById('chat-form');
 const input = document.getElementById('chat-input');
 
 let sessionId = null;
+let heroFaded = false;
 
 /* ── Rate-limit modal ──────────────────────────────────────── */
 
@@ -40,7 +41,10 @@ function closeRateLimitModal() {
 
 function renderMarkdown(text) {
   return text
+    .replace(/```mermaid\n([\s\S]*?)```/g, '<div class="mermaid">$1</div>')
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
     .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -49,11 +53,30 @@ function renderMarkdown(text) {
     .replace(/\n/g, '\n');
 }
 
+function renderMermaidBlocks(container) {
+  if (!window.mermaid) return;
+  container.querySelectorAll('.mermaid:not([data-processed])').forEach(el => {
+    el.setAttribute('data-processed', 'true');
+    const code = el.textContent.trim();
+    const id = 'mermaid-' + Math.random().toString(36).slice(2, 8);
+    try {
+      window.mermaid.render(id, code).then(({ svg }) => {
+        el.innerHTML = svg;
+      }).catch(() => {
+        el.innerHTML = '<pre><code>' + code + '</code></pre>';
+      });
+    } catch (e) {
+      el.innerHTML = '<pre><code>' + code + '</code></pre>';
+    }
+  });
+}
+
 function addMessage(role, content) {
   const div = document.createElement('div');
   div.className = `msg msg-${role}`;
   if (role === 'assistant') {
     div.innerHTML = renderMarkdown(content);
+    renderMermaidBlocks(div);
   } else {
     div.textContent = content;
   }
@@ -105,6 +128,12 @@ form.addEventListener('submit', e => {
   if (!q) return;
   input.value = '';
   input.disabled = true;
+
+  // On mobile, fade out hero after first question to reclaim space
+  if (!heroFaded) {
+    heroFaded = true;
+    document.body.classList.add('hero-faded');
+  }
 
   addMessage('user', q);
   const loader = addLoading();
@@ -188,14 +217,14 @@ form.addEventListener('submit', e => {
       if (d.phase === 'tool') { toolCount++; addStep(toolLabel(d.tool, d.args || {})); }
       else if (d.phase === 'curating') addStep('Curating evidence\u2026');
       else if (d.phase === 'answering') addStep('Composing answer\u2026');
-      messages.scrollTop = messages.scrollHeight;
+      /* no auto-scroll — let the user read at their own pace */
     } else {
       if (data === '[DONE]') { collapseStatus(); cleanup(); return; }
       if (loader.parentNode) loader.remove();
       collapseStatus();
       if (!assistantDiv) assistantDiv = addMessage('assistant', data);
-      else assistantDiv.innerHTML = renderMarkdown(data);
-      messages.scrollTop = messages.scrollHeight;
+      else { assistantDiv.innerHTML = renderMarkdown(data); renderMermaidBlocks(assistantDiv); }
+      /* no auto-scroll — let the user read at their own pace */
     }
   }
 
