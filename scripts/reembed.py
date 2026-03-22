@@ -39,7 +39,9 @@ MATCH (r:Repository)-[:CONTAINS]->(:File)-[:CONTAINS]->(cs:CodeSnippet)
 OPTIONAL MATCH (cs)-[:DEMONSTRATES]->(sk:Skill)
 RETURN cs.name AS name, cs.file_path AS file_path, cs.content AS content,
        cs.language AS language, r.name AS repo, collect(DISTINCT sk.name) AS skills,
-       cs.context AS context
+       cs.context AS context,
+       cs.embedding_nim IS NOT NULL AS has_nim,
+       cs.embedding_voyage IS NOT NULL AS has_voyage
 """
 
 SKILLS_LIST = ", ".join(ALL_SKILLS)
@@ -127,14 +129,16 @@ def _phase_embed(rows, provider: str, embed_client, neo: Neo4jClient):
     embed_prop = f"embedding_{provider}"
     batch_size = EMBED_BATCH.get(provider, 50)
 
-    # Only embed snippets that have context
-    eligible = [r for r in rows if r["context"]]
+    # Only embed snippets that have context and lack this provider's embedding
+    has_key = f"has_{provider}"
+    eligible = [r for r in rows if r["context"] and not r.get(has_key)]
     if not eligible:
-        print(f"  {provider}: No snippets with context to embed")
+        print(f"  {provider}: All snippets already embedded")
         return
 
+    total_with_context = sum(1 for r in rows if r["context"])
     print(f"  {provider}: Embedding {len(eligible)} snippets into '{embed_prop}' "
-          f"(batch size {batch_size})")
+          f"({total_with_context - len(eligible)} already done, batch size {batch_size})")
 
     for i in tqdm(range(0, len(eligible), batch_size),
                   desc=f"Embed [{provider}]"):
