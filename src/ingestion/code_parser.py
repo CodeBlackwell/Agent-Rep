@@ -81,10 +81,71 @@ def _fallback_parse(text: str, file_path: str, suffix: str) -> list[CodeChunk]:
     return chunks
 
 
+def _parse_notebook(file_path: str | Path) -> list[CodeChunk]:
+    """Extract code cells from Jupyter notebooks as parseable Python chunks."""
+    import json
+    path = Path(file_path)
+    try:
+        nb = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+    except (json.JSONDecodeError, ValueError):
+        return []
+    cells = nb.get("cells", [])
+
+    # Collect code cells, track line offsets
+    code_cells = []
+    for i, cell in enumerate(cells):
+        if cell.get("cell_type") != "code":
+            continue
+        source = "".join(cell.get("source", []))
+        if not source.strip():
+            continue
+        code_cells.append((i, source))
+
+    if not code_cells:
+        return []
+
+    # Combine all code cells into one Python source for tree-sitter parsing
+    combined_lines = []
+    cell_offsets = []  # (start_line_in_combined, cell_index, cell_source)
+    for cell_idx, source in code_cells:
+        start = len(combined_lines) + 1
+        lines = source.split("\n")
+        combined_lines.extend(lines)
+        cell_offsets.append((start, cell_idx, source, len(lines)))
+
+    combined = "\n".join(combined_lines)
+    py_path = str(file_path).replace(".ipynb", ".py")
+
+    # Parse with tree-sitter to extract functions/classes
+    chunks = _parse_with_treesitter(
+        combined.encode(), LANGUAGES[".py"], ".py", py_path,
+    )
+
+    # If tree-sitter found nothing (all top-level code), fall back to per-cell chunks
+    if not chunks:
+        for start, cell_idx, source, line_count in cell_offsets:
+            if len(source.strip()) < 20:
+                continue
+            chunks.append(CodeChunk(
+                content=source,
+                file_path=py_path,
+                start_line=start,
+                end_line=start + line_count - 1,
+                language="py",
+                name=f"cell_{cell_idx}",
+            ))
+
+    return chunks
+
+
 def parse_file(file_path: str | Path) -> list[CodeChunk]:
     path = Path(file_path)
-    text = path.read_text(encoding="utf-8", errors="replace")
     suffix = path.suffix.lower()
+
+    if suffix == ".ipynb":
+        return _parse_notebook(path)
+
+    text = path.read_text(encoding="utf-8", errors="replace")
 
     if suffix in LANGUAGES:
         return _parse_with_treesitter(text.encode(), LANGUAGES[suffix], suffix, str(path))

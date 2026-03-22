@@ -92,6 +92,49 @@ function addLoading() {
   return div;
 }
 
+/* ── Starter questions ─────────────────────────────────────── */
+
+const REPOS = ['SPICE', 'C.R.A.C.K.', 'Flow-Ohana', 'Agent_Blackwell', 'PROVE', 'Architx', 'POI_Alchemist', 'A.U.R.A'];
+const randomRepo = REPOS[Math.floor(Math.random() * REPOS.length)];
+
+const STARTER_QUESTIONS = [
+  { label: 'How did Le build ' + randomRepo + '?', action: 'query', value: 'How did Le build ' + randomRepo + '?' },
+  { label: 'Strengths & weaknesses', action: 'query', value: "What are Le's strengths and weaknesses as an engineer?" },
+  { label: 'Analyze a job description', action: 'jd' },
+];
+
+let starterDiv = null;
+
+function showStarters() {
+  starterDiv = document.createElement('div');
+  starterDiv.className = 'starter-questions';
+  STARTER_QUESTIONS.forEach(sq => {
+    const btn = document.createElement('button');
+    btn.className = 'starter-btn';
+    btn.textContent = sq.label;
+    btn.addEventListener('click', () => {
+      dismissStarters();
+      if (sq.action === 'jd') {
+        openJdModal();
+      } else {
+        input.value = sq.value;
+        form.requestSubmit();
+      }
+    });
+    starterDiv.appendChild(btn);
+  });
+  messages.appendChild(starterDiv);
+}
+
+function dismissStarters() {
+  if (starterDiv && starterDiv.parentNode) {
+    starterDiv.remove();
+    starterDiv = null;
+  }
+}
+
+showStarters();
+
 /* ── Tool call labels ──────────────────────────────────────── */
 
 const TOOL_LABELS = {
@@ -128,6 +171,8 @@ form.addEventListener('submit', e => {
   if (!q) return;
   input.value = '';
   input.disabled = true;
+
+  dismissStarters();
 
   // On mobile, fade out hero after first question to reclaim space
   if (!heroFaded) {

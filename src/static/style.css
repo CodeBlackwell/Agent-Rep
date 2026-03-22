@@ -644,6 +644,32 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .msg-assistant pre code { background: none; padding: 0; color: var(--ink); }
 
+/* Starter question buttons */
+.starter-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.starter-btn {
+  background: rgba(234, 213, 182, 0.45);
+  border: 1px solid rgba(212, 205, 196, 0.6);
+  border-radius: 20px;
+  padding: 0.45rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--ink-light);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.starter-btn:hover {
+  background: rgba(234, 213, 182, 0.7);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
 .msg-assistant h3, .msg-assistant h4 {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 600;

@@ -565,6 +565,15 @@ const TreemapRenderer = {
           .style('opacity', 0.88)
       );
 
+    // Touch support for treemap tiles (SVG click unreliable on mobile)
+    gNode.selectAll('rect.treemap-leaf').each(function(d) {
+      this.addEventListener('touchend', (evt) => {
+        evt.preventDefault();
+        hideTooltip();
+        if (d.data.status === 'demonstrated') openRefModal(d.data.name);
+      }, { passive: false });
+    });
+
     // Skill labels inside tiles
     gNode.selectAll('text.treemap-label')
       .data(leaves, d => d.data.name)
@@ -637,12 +646,13 @@ const BarRenderer = {
         .style('cursor', skill.status === 'demonstrated' ? 'pointer' : 'default');
 
       // Invisible hit area — full row width for easy tapping on mobile
-      row.append('rect')
+      const hitArea = row.append('rect')
         .attr('x', 0)
         .attr('y', y)
         .attr('width', w)
         .attr('height', barH)
         .style('fill', 'transparent')
+        .style('touch-action', 'none')
         .on('mouseover', (evt) => {
           showTooltip(evt, tipHtml(skill));
           row.select('.bar-fill').style('opacity', 1);
@@ -656,6 +666,13 @@ const BarRenderer = {
           hideTooltip();
           if (skill.status === 'demonstrated') openRefModal(skill.name);
         });
+
+      // Touch support — SVG click events are unreliable on mobile touch devices
+      hitArea.node().addEventListener('touchend', (evt) => {
+        evt.preventDefault();
+        hideTooltip();
+        if (skill.status === 'demonstrated') openRefModal(skill.name);
+      }, { passive: false });
 
       // Skill name label
       row.append('text')

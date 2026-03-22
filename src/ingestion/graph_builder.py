@@ -9,7 +9,7 @@ from src.ingestion.skill_classifier import classify_chunks
 from src.ingestion.skill_taxonomy import ALL_SKILLS
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".env", "dist", "build", ".next", "portfolio"}
-CODE_EXTENSIONS = {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rs", ".rb", ".cpp", ".c", ".h"}
+CODE_EXTENSIONS = {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rs", ".rb", ".cpp", ".c", ".h", ".ipynb"}
 LANG_LABELS = {
     "py": "Python", "js": "JavaScript", "ts": "TypeScript", "tsx": "TypeScript",
     "jsx": "JavaScript", "java": "Java", "go": "Go", "rs": "Rust",
