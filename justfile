@@ -1,4 +1,6 @@
-# Server config — set these for your deployment
+set dotenv-load
+
+# Server config — set PROVE_SERVER and PROVE_APP_DIR in .env
 SERVER := env("PROVE_SERVER", "root@your-server")
 APP_DIR := env("PROVE_APP_DIR", "/opt/prove")
 
