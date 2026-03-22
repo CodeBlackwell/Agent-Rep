@@ -8,9 +8,16 @@ let heroFaded = false;
 /* ── Graph panel collapse (mobile) ────────────────────────── */
 
 const collapseBtn = document.getElementById('graph-collapse');
+console.log('[PROVE] collapse button:', collapseBtn);
 if (collapseBtn) {
   collapseBtn.addEventListener('click', () => {
-    document.body.classList.toggle('graph-collapsed');
+    const collapsed = document.body.classList.toggle('graph-collapsed');
+    console.log('[PROVE] graph collapsed:', collapsed);
+  });
+  collapseBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    const collapsed = document.body.classList.toggle('graph-collapsed');
+    console.log('[PROVE] graph collapsed (touch):', collapsed);
   });
 }
 
