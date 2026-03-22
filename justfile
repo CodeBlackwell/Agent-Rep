@@ -4,4 +4,4 @@ dev:
 
 deploy:
     git push
-    ssh root@5.78.198.79 'cd /opt/showmeoff && git fetch origin && git reset --hard origin/main && docker compose -f docker-compose.prod.yml up -d --build'
+    ssh root@5.78.198.79 'cd /opt/showmeoff && git fetch origin && git reset --hard origin/main && git lfs pull && docker compose -f docker-compose.prod.yml up -d --build'
