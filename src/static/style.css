@@ -107,6 +107,7 @@ body.canvas-mode #graph-panel {
 .is-loading .hero__name,
 .is-loading .hero__tagline,
 .is-loading .hero__intro,
+.is-loading .hero__prove,
 .is-loading #chat-panel,
 .is-loading #graph-panel {
   opacity: 0;
@@ -116,6 +117,7 @@ body.canvas-mode #graph-panel {
 .hero__name,
 .hero__tagline,
 .hero__intro,
+.hero__prove,
 #chat-panel,
 #graph-panel {
   transition: opacity 0.7s ease, transform 0.7s ease;
@@ -124,6 +126,7 @@ body.canvas-mode #graph-panel {
 .is-reveal .hero__name     { transition-delay: 0.3s; }
 .is-reveal .hero__tagline  { transition-delay: 0.8s; }
 .is-reveal .hero__intro    { transition-delay: 1.3s; }
+.is-reveal .hero__prove    { transition-delay: 1.8s; }
 .is-reveal #chat-panel     { transition-delay: 2.2s; }
 .is-reveal #graph-panel    { transition-delay: 2.6s; }
 
@@ -131,6 +134,7 @@ body.canvas-mode #graph-panel {
 .is-loaded .hero__name,
 .is-loaded .hero__tagline,
 .is-loaded .hero__intro,
+.is-loaded .hero__prove,
 .is-loaded #chat-panel,
 .is-loaded #graph-panel { transition-delay: 0s; }
 
@@ -228,6 +232,22 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   margin-top: 0.6rem;
   line-height: 1.55;
   text-shadow: 0 1px 8px rgba(245, 240, 235, 0.8);
+}
+
+.hero__prove {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--ink-faint);
+  margin-top: 0.5rem;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 6px rgba(245, 240, 235, 0.8);
+}
+
+.hero__prove strong {
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.08em;
 }
 
 /* Chat tab button + mobile note — hidden on desktop */
