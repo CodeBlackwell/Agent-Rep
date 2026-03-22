@@ -173,14 +173,14 @@ Visitor identity is a composite of IP address + lightweight browser fingerprint 
 
 ## Deployment
 
-**Production:** `https://prove.codeblackwell.ai` — Hetzner CX22 (2 vCPU, 4GB RAM).
+**Production:** `https://prove.codeblackwell.ai`
 
 ```bash
 # Deploy / update (from server)
-cd /opt/prove && git pull && docker compose -f docker-compose.prod.yml up -d --build
+git pull && docker compose -f docker-compose.prod.yml up -d --build
 
 # Logs (from server)
-docker compose -f /opt/prove/docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Full fresh deploy
 bash scripts/deploy.sh
