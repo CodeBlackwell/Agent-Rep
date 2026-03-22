@@ -835,35 +835,77 @@ function measureDims() {
   if (svg) svg.attr('viewBox', `0 0 ${dims.width} ${dims.height}`);
 }
 
-function switchMode(mode) {
-  // "chat" is a virtual mode — show chat panel, hide graph content
-  if (mode === 'chat') {
-    document.body.classList.add('mobile-chat-view');
-    document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
-      btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === 'chat');
-    });
-    return;
-  }
+/* ── Mobile chat DOM relocation ─────────────────────────────── */
 
-  document.body.classList.remove('mobile-chat-view');
+let mobileChat = null;
 
-  if (mode === activeMode && renderers[mode]._root) {
-    // Just update toggle highlight (switching back from chat)
-    document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
-      btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === mode);
-    });
-    measureDims();
-    renderers[mode].render(getViewState(), dims);
-    return;
-  }
+function ensureMobileChat() {
+  if (mobileChat) return mobileChat;
+  mobileChat = document.createElement('div');
+  mobileChat.id = 'mobile-chat';
+  const graphPanel = document.getElementById('graph-panel');
+  const graphContainer = document.getElementById('graph-container');
+  graphPanel.insertBefore(mobileChat, graphContainer);
+  return mobileChat;
+}
 
-  renderers[activeMode].destroy();
-  activeMode = mode;
+function showMobileChat() {
+  const mc = ensureMobileChat();
+  const msgs = document.getElementById('messages');
+  const form = document.getElementById('chat-form');
+  if (!mc.contains(msgs)) mc.appendChild(msgs);
+  if (!mc.contains(form)) mc.appendChild(form);
+  mc.style.display = 'flex';
+  document.getElementById('graph-container').style.display = 'none';
+  const filter = document.querySelector('.graph-filter');
+  const empty = document.querySelector('.graph-empty');
+  const legend = document.getElementById('viz-legend');
+  if (filter) filter.style.display = 'none';
+  if (empty) empty.style.display = 'none';
+  if (legend) legend.style.display = 'none';
+}
+
+function hideMobileChat() {
+  if (!mobileChat) return;
+  const chatPanel = document.getElementById('chat-panel');
+  const msgs = document.getElementById('messages');
+  const form = document.getElementById('chat-form');
+  if (mobileChat.contains(msgs)) chatPanel.appendChild(msgs);
+  if (mobileChat.contains(form)) chatPanel.appendChild(form);
+  mobileChat.style.display = 'none';
+  document.getElementById('graph-container').style.display = '';
+  const legend = document.getElementById('viz-legend');
+  if (legend) legend.style.display = '';
+  // graph-filter visibility managed by updateFilterBar
+}
+
+function syncToggle(mode) {
   document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
     btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === mode);
   });
+}
+
+/* ── Mode switching ────────────────────────────────────────── */
+
+function switchMode(mode) {
+  // Chat tab (mobile only — DOM relocation)
+  if (mode === 'chat' && isMobile) {
+    showMobileChat();
+    syncToggle('chat');
+    return;
+  }
+
+  // Leaving chat view — restore DOM
+  if (isMobile) hideMobileChat();
+
+  if (mode !== activeMode || !renderers[mode]._root) {
+    renderers[activeMode].destroy();
+    activeMode = mode;
+    renderers[mode].init(svg, dims);
+  }
+  syncToggle(mode);
   updateLegend(mode);
-  renderers[mode].init(svg, dims);
+  measureDims();
   if (!state.empty) renderers[mode].render(getViewState(), dims);
 }
 
@@ -887,17 +929,8 @@ new ResizeObserver(() => {
 }).observe(document.getElementById('graph-container'));
 
 initSVG();
-// On mobile, start in chat view; sync toggle buttons
-if (isMobile) {
-  document.body.classList.add('mobile-chat-view');
-  document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
-    btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === 'chat');
-  });
-} else {
-  document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
-    btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === activeMode);
-  });
-}
+// On mobile, start with Chat tab active (DOM relocation happens after hero-faded)
+syncToggle(isMobile ? 'chat' : activeMode);
 updateLegend(activeMode);
 renderers[activeMode].init(svg, dims);
 
@@ -910,6 +943,8 @@ window.updateGraph = function (data) {
   updateFilterBar();
   renderCurrent();
 };
+
+window.switchVizMode = switchMode;
 
 window.resetGraph = function () {
   state.clear();

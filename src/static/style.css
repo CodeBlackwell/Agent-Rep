@@ -277,7 +277,7 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     display: block;
   }
 
-  /* Mobile tab system: chat vs graph are full-screen panels */
+  /* After first question: left-col hidden, graph-panel becomes sole container */
   .hero-faded .left-col {
     display: none;
   }
@@ -287,29 +287,27 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     max-height: none;
   }
 
-  /* Chat view: show chat inside graph-panel area, hide graph content */
-  .mobile-chat-view .left-col {
-    display: flex !important;
+  /* Mobile chat container (DOM-relocated messages + form) */
+  #mobile-chat {
     flex: 1;
-  }
-
-  .mobile-chat-view .left-col .hero {
     display: none;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .mobile-chat-view #chat-panel {
-    border-radius: 0;
+  #mobile-chat #messages {
     flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem 0.6rem;
   }
 
-  .mobile-chat-view #graph-container,
-  .mobile-chat-view .graph-empty,
-  .mobile-chat-view .graph-filter,
-  .mobile-chat-view .legend {
-    display: none !important;
+  #mobile-chat #chat-form {
+    padding: 0.4rem 0.6rem;
+    border-top: 1px solid rgba(212, 205, 196, 0.3);
   }
 
-  /* After first question: fade hero, reclaim space for chat + viz */
+  /* Hero fade animation */
   .hero-faded .hero {
     max-height: 0;
     padding: 0;
