@@ -230,8 +230,8 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   text-shadow: 0 1px 8px rgba(245, 240, 235, 0.8);
 }
 
-/* Hidden on desktop — mobile-only toggle */
-.graph-collapse { display: none; }
+/* Chat tab button — hidden on desktop */
+.viz-toggle__btn--mobile-only { display: none; }
 
 /* ── Mobile: tablets & small laptops ────────── */
 @media (max-width: 768px) {
@@ -272,52 +272,41 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     transition: max-height 0.6s ease, padding 0.6s ease, opacity 0.5s ease, margin 0.6s ease;
   }
 
-  #chat-panel {
-    border-radius: 10px;
+  /* Show the Chat tab button on mobile */
+  .viz-toggle__btn--mobile-only {
+    display: block;
   }
 
-  /* Graph collapse toggle — gradient bar with arrow */
-  .graph-collapse {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 0.5rem 0;
-    margin: 0.2rem 0;
-    background: linear-gradient(to bottom,
-      rgba(212, 205, 196, 0.0) 0%,
-      rgba(212, 205, 196, 0.25) 30%,
-      rgba(196, 184, 168, 0.45) 100%);
-    border: none;
-    border-radius: 8px;
-    color: var(--ink-faint);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    min-height: 32px;
+  /* Mobile tab system: chat vs graph are full-screen panels */
+  .hero-faded .left-col {
+    display: none;
   }
 
-  .graph-collapse svg {
-    transition: transform 0.3s ease;
-  }
-
-  .graph-collapsed .graph-collapse svg {
-    transform: rotate(180deg);
-  }
-
-  .graph-collapsed .graph-collapse {
-    background: linear-gradient(to top,
-      rgba(212, 205, 196, 0.0) 0%,
-      rgba(212, 205, 196, 0.25) 30%,
-      rgba(196, 184, 168, 0.45) 100%);
-  }
-
-  .graph-collapsed #graph-panel {
-    display: none !important;
-  }
-
-  .graph-collapsed #chat-panel {
+  .hero-faded #graph-panel {
     flex: 1;
+    max-height: none;
+  }
+
+  /* Chat view: show chat inside graph-panel area, hide graph content */
+  .mobile-chat-view .left-col {
+    display: flex !important;
+    flex: 1;
+  }
+
+  .mobile-chat-view .left-col .hero {
+    display: none;
+  }
+
+  .mobile-chat-view #chat-panel {
+    border-radius: 0;
+    flex: 1;
+  }
+
+  .mobile-chat-view #graph-container,
+  .mobile-chat-view .graph-empty,
+  .mobile-chat-view .graph-filter,
+  .mobile-chat-view .legend {
+    display: none !important;
   }
 
   /* After first question: fade hero, reclaim space for chat + viz */

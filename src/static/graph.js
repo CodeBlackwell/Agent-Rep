@@ -836,7 +836,27 @@ function measureDims() {
 }
 
 function switchMode(mode) {
-  if (mode === activeMode && renderers[mode]._root) return;
+  // "chat" is a virtual mode — show chat panel, hide graph content
+  if (mode === 'chat') {
+    document.body.classList.add('mobile-chat-view');
+    document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
+      btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === 'chat');
+    });
+    return;
+  }
+
+  document.body.classList.remove('mobile-chat-view');
+
+  if (mode === activeMode && renderers[mode]._root) {
+    // Just update toggle highlight (switching back from chat)
+    document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
+      btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === mode);
+    });
+    measureDims();
+    renderers[mode].render(getViewState(), dims);
+    return;
+  }
+
   renderers[activeMode].destroy();
   activeMode = mode;
   document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
@@ -867,10 +887,17 @@ new ResizeObserver(() => {
 }).observe(document.getElementById('graph-container'));
 
 initSVG();
-// Sync toggle buttons to initial mode (bars on mobile)
-document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
-  btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === activeMode);
-});
+// On mobile, start in chat view; sync toggle buttons
+if (isMobile) {
+  document.body.classList.add('mobile-chat-view');
+  document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
+    btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === 'chat');
+  });
+} else {
+  document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
+    btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === activeMode);
+  });
+}
 updateLegend(activeMode);
 renderers[activeMode].init(svg, dims);
 
