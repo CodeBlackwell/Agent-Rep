@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% if skill %}
+  <title>{{ skill.name }} — {{ engineer_name }} | PROVE</title>
+  <meta name="description" content="{{ engineer_name }} demonstrates {{ skill.proficiency }} proficiency in {{ skill.name }} with {{ skill.snippet_count }} code examples across {{ skill.repo_count }} repositories." />
+  <link rel="canonical" href="https://prove.codeblackwell.ai/skills/{{ skill.name | lower | replace(' ', '-') }}" />
+
+  <meta property="og:title" content="{{ skill.name }} — {{ engineer_name }} | PROVE" />
+  <meta property="og:description" content="{{ engineer_name }} demonstrates {{ skill.proficiency }} proficiency in {{ skill.name }} with {{ skill.snippet_count }} code examples across {{ skill.repo_count }} repositories." />
+  <meta property="og:image" content="https://prove.codeblackwell.ai/static/og.png" />
+  <meta property="og:url" content="https://prove.codeblackwell.ai/skills/{{ skill.name | lower | replace(' ', '-') }}" />
+  <meta property="og:type" content="profile" />
+  <meta property="og:site_name" content="PROVE" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ skill.name }} — {{ engineer_name }} | PROVE" />
+  <meta name="twitter:description" content="{{ skill.proficiency | capitalize }} proficiency in {{ skill.name }} — {{ skill.snippet_count }} code examples." />
+  <meta name="twitter:image" content="https://prove.codeblackwell.ai/static/og.png" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "name": "{{ skill.name }} — {{ engineer_name }}",
+    "url": "https://prove.codeblackwell.ai/skills/{{ skill.name | lower | replace(' ', '-') }}",
+    "mainEntity": {
+      "@type": "Person",
+      "name": "{{ engineer_name }}",
+      "knowsAbout": "{{ skill.name }}"
+    }
+  }
+  </script>
+  {% else %}
+  <title>Skill Not Found — PROVE</title>
+  <meta name="robots" content="noindex" />
+  {% endif %}
+
+  <link rel="stylesheet" href="{{ cdn_base }}/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main role="main" style="max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem;">
+    {% if skill %}
+    <nav aria-label="Breadcrumb" style="margin-bottom: 1.5rem;">
+      <a href="/" style="color: #6b4c2a; text-decoration: none;">&larr; Back to {{ engineer_name }}'s Portfolio</a>
+    </nav>
+
+    <article>
+      <header>
+        <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 2.4rem; margin-bottom: 0.25rem;">{{ skill.name }}</h1>
+        <p style="color: #8a7a6a; font-size: 0.95rem; margin-bottom: 0.5rem;">
+          {{ skill.domain }} &rsaquo; {{ skill.category }}
+        </p>
+        <p style="font-size: 1.05rem;">
+          <strong>Proficiency:</strong> {{ skill.proficiency | capitalize }} &middot;
+          <strong>{{ skill.snippet_count }}</strong> code snippets across <strong>{{ skill.repo_count }}</strong> repositories
+        </p>
+      </header>
+
+      <section aria-label="Code evidence">
+        <h2 style="font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; margin-top: 2rem;">Code Evidence</h2>
+        {% if skill.references %}
+        <ul style="list-style: none; padding: 0;">
+          {% for ref in skill.references %}
+          <li style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #e0d8ce; border-radius: 6px;">
+            <p style="font-weight: 600; margin-bottom: 0.3rem;">{{ ref.snippet_name }}</p>
+            <p style="color: #8a7a6a; font-size: 0.85rem; margin-bottom: 0.5rem;">
+              {% if not ref.private %}
+              <a href="https://github.com/{{ github_owner }}/{{ ref.repo }}/blob/main/{{ ref.path }}#L{{ ref.start_line }}-L{{ ref.end_line }}"
+                 target="_blank" rel="noopener noreferrer"
+                 style="color: #6b4c2a;">
+                {{ ref.repo }}/{{ ref.path }}:{{ ref.start_line }}-{{ ref.end_line }}
+              </a>
+              {% else %}
+              {{ ref.repo }}/{{ ref.path }}:{{ ref.start_line }}-{{ ref.end_line }} (private)
+              {% endif %}
+            </p>
+            {% if ref.context %}
+            <p style="font-size: 0.9rem; line-height: 1.5;">{{ ref.context }}</p>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p>No public code evidence available for this skill.</p>
+        {% endif %}
+      </section>
+    </article>
+    {% else %}
+    <h1 style="font-family: 'Cormorant Garamond', serif;">Skill Not Found</h1>
+    <p>The requested skill could not be found. <a href="/" style="color: #6b4c2a;">Return to the portfolio</a>.</p>
+    {% endif %}
+  </main>
+
+  <footer class="site-credit" role="contentinfo">Made with <span aria-hidden="true">🖤</span> by <a href="https://github.com/codeblackwell" target="_blank" rel="noopener noreferrer">@CodeBlackwell</a></footer>
+</body>
+</html>

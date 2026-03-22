@@ -5,7 +5,7 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -295,6 +295,93 @@ async def jd_match(request: Request, file: UploadFile = File(None),
             for r in report.requirements
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# SEO: Sitemap & skill HTML views
+# ---------------------------------------------------------------------------
+
+@app.get("/sitemap.xml", response_class=Response)
+def sitemap():
+    neo4j = clients["neo4j_client"]
+    urls = ['  <url><loc>https://prove.codeblackwell.ai/</loc><priority>1.0</priority><changefreq>weekly</changefreq></url>']
+
+    with neo4j.driver.session() as s:
+        rows = s.run("MATCH (sk:Skill) RETURN sk.name AS name ORDER BY sk.name").data()
+
+    for row in rows:
+        name = row["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        slug = row["name"].replace(" ", "-").lower()
+        urls.append(f'  <url><loc>https://prove.codeblackwell.ai/skills/{slug}</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>')
+
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml += "\n".join(urls)
+    xml += "\n</urlset>\n"
+    return Response(content=xml, media_type="application/xml")
+
+
+@app.get("/skills/{skill_slug}")
+def skill_page(request: Request, skill_slug: str):
+    """SEO-friendly HTML page for an individual skill."""
+    skill_name = skill_slug.replace("-", " ")
+
+    neo4j = clients["neo4j_client"]
+    with neo4j.driver.session() as s:
+        # Case-insensitive match
+        meta = s.run(
+            "MATCH (d:Domain)-[:CONTAINS]->(c:Category)-[:CONTAINS]->(sk:Skill) "
+            "WHERE toLower(sk.name) = toLower($name) "
+            "RETURN sk.name AS name, d.name AS domain, c.name AS category, "
+            "sk.proficiency AS proficiency, sk.snippet_count AS snippet_count, sk.repo_count AS repo_count",
+            name=skill_name,
+        ).single()
+
+    if not meta:
+        return templates.TemplateResponse("skill.html", {
+            "request": request, "skill": None, "cdn_base": settings.cdn_base,
+        }, status_code=404)
+
+    with neo4j.driver.session() as s:
+        rows = s.run(
+            "MATCH (f:File)-[:CONTAINS]->(cs:CodeSnippet)-[:DEMONSTRATES]->(sk:Skill) "
+            "WHERE toLower(sk.name) = toLower($name) "
+            "MATCH (r:Repository)-[:CONTAINS]->(f) "
+            "RETURN r.name AS repo, f.path AS path, cs.name AS snippet_name, cs.context AS context, "
+            "cs.start_line AS start_line, cs.end_line AS end_line, r.private AS private "
+            "ORDER BY r.name, f.path LIMIT 10",
+            name=skill_name,
+        ).data()
+
+        # Get engineer name
+        eng = s.run("MATCH (e:Engineer) RETURN e.name AS name LIMIT 1").single()
+
+    return templates.TemplateResponse("skill.html", {
+        "request": request,
+        "skill": {
+            "name": meta["name"],
+            "domain": meta["domain"],
+            "category": meta["category"],
+            "proficiency": meta["proficiency"] or "minimal",
+            "snippet_count": meta["snippet_count"] or 0,
+            "repo_count": meta["repo_count"] or 0,
+            "references": [
+                {
+                    "repo": r["repo"],
+                    "path": r["path"],
+                    "snippet_name": r["snippet_name"],
+                    "context": r["context"] or "",
+                    "start_line": r["start_line"] or 0,
+                    "end_line": r["end_line"] or 0,
+                    "private": bool(r["private"]) if r["private"] is not None else False,
+                }
+                for r in rows
+            ],
+        },
+        "engineer_name": eng["name"] if eng else "Engineer",
+        "cdn_base": settings.cdn_base,
+        "github_owner": settings.github_owner,
+    })
 
 
 # ---------------------------------------------------------------------------

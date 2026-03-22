@@ -24,8 +24,60 @@
 
   <!-- General SEO -->
   <meta name="description" content="Explore {{ name }}'s engineering skills through an interactive knowledge graph. Ask questions, see real code evidence, and discover technical depth — powered by AI." />
+  <link rel="canonical" href="https://prove.codeblackwell.ai/" />
+  <meta name="twitter:site" content="@codeblackwell" />
+  <meta name="twitter:creator" content="@codeblackwell" />
+  <meta property="og:image:alt" content="{{ name }} — PROVE engineering portfolio knowledge graph preview" />
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "name": "{{ name }} — PROVE",
+    "url": "https://prove.codeblackwell.ai/",
+    "description": "Explore {{ name }}'s engineering skills through an interactive knowledge graph with AI-powered code evidence.",
+    "mainEntity": {
+      "@type": "Person",
+      "name": "{{ name }}",
+      "url": "https://codeblackwell.ai",
+      "jobTitle": "Full-Stack Software Engineer",
+      "sameAs": [
+        "https://github.com/codeblackwell",
+        "https://www.linkedin.com/in/codeblackwell/",
+        "https://twitter.com/codeblackwell"
+      ]
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "PROVE",
+    "url": "https://prove.codeblackwell.ai/",
+    "applicationCategory": "Portfolio",
+    "description": "AI-powered engineering portfolio that reasons over verified code evidence using a Neo4j knowledge graph.",
+    "author": {
+      "@type": "Person",
+      "name": "{{ name }}"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+
+  <!-- Resource hints -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="dns-prefetch" href="https://d3js.org" />
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+
+  <link rel="preload" href="{{ cdn_base }}/static/style.css" as="style" />
   <link rel="stylesheet" href="{{ cdn_base }}/static/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
 </head>
 <body class="is-loading">
@@ -51,19 +103,19 @@
     </svg>
   </button>
 
-  <main>
+  <main role="main">
     <div class="left-col">
       <header class="hero">
         <h1 class="hero__name">{{ name }}</h1>
-        <p class="hero__tagline">Full Stack Ai Software Engineer</p>
+        <p class="hero__tagline">Full-Stack AI Software Engineer</p>
         <p class="hero__intro">I learn through observation, hypothesis, building, breaking, refinement.. and play. Pulling things apart, tracing the edges, enjoying the maze each problem is, then writing the code that answers the question. Every project here began as curiosity that wouldn't settle for a tutorial. This portfolio works the same way: an AI agent that reasons over my actual code, connects skills to evidence, and shows its work. Ask it anything and watch it think.</p>
         <p class="hero__prove">This is <strong>P.R.O.V.E.</strong> — Portfolio Reasoning Over Verified Evidence.</p>
       </header>
 
-      <section id="chat-panel">
-        <div id="messages"></div>
-        <form id="chat-form">
-          <input type="text" id="chat-input" placeholder="Ask about skills, experience, code… or upload a JD →" autocomplete="off">
+      <section id="chat-panel" aria-label="Chat with AI assistant">
+        <div id="messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
+        <form id="chat-form" aria-label="Ask a question">
+          <input type="text" id="chat-input" placeholder="Ask about skills, experience, code… or upload a JD →" autocomplete="off" aria-label="Type your question">
           <button type="button" class="jd-btn" id="jd-btn" title="Analyze a job description">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
@@ -73,8 +125,8 @@
       </section>
     </div>
 
-    <section id="graph-panel">
-      <div class="viz-toggle">
+    <section id="graph-panel" aria-label="Skills visualization">
+      <div class="viz-toggle" role="tablist" aria-label="Visualization type">
         <button class="viz-toggle__btn viz-toggle__btn--mobile-only" data-mode="chat">Chat</button>
         <button class="viz-toggle__btn" data-mode="treemap">Treemap</button>
         <button class="viz-toggle__btn" data-mode="bars">Bars</button>
@@ -87,7 +139,7 @@
     </section>
   </main>
 
-  <footer class="site-credit">Made with <span class="site-credit__heart">🖤</span> by <a href="https://github.com/codeblackwell" target="_blank">@CodeBlackwell</a></footer>
+  <footer class="site-credit" role="contentinfo">Made with <span class="site-credit__heart" aria-hidden="true">🖤</span> by <a href="https://github.com/codeblackwell" target="_blank" rel="noopener noreferrer">@CodeBlackwell</a></footer>
 
   <script>window.__GITHUB_OWNER__ = "{{ github_owner }}";</script>
   <script src="https://d3js.org/d3.v7.min.js"></script>

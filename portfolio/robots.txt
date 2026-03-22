@@ -1,2 +1,7 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
+Allow: /
+Disallow: /api/logs
+Disallow: /api/sessions
+
+Sitemap: https://prove.codeblackwell.ai/sitemap.xml
