@@ -100,7 +100,7 @@ Two visualization modes in the graph panel, toggled via buttons:
 
 ### SQLite Persistence (`src/core/db.py`)
 
-`Database` class provides persistent storage for conversations and logs at `data/showmeoff.db` (configurable via `DB_PATH`). Two tables:
+`Database` class provides persistent storage for conversations and logs at `data/prove.db` (configurable via `DB_PATH`). Two tables:
 
 - **`conversations`** — individual messages (session_id, role, content, metadata JSON, created_at). Keyed by session_id for multi-turn history retrieval.
 - **`logs`** — structured log entries (timestamp, level, event, session_id, fields JSON). Mirrors the JSONL output with indexed columns for querying.
@@ -152,9 +152,9 @@ Visitor identity is a composite of IP address + lightweight browser fingerprint 
 | `ANTHROPIC_API_KEY` | — | Required when `CHAT_PROVIDER=anthropic`; also enables Sonnet for ingestion |
 | `VOYAGE_API_KEY` | — | Required when `EMBED_PROVIDER=voyage` |
 | `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Query model only — ingestion always uses Sonnet |
-| `DB_PATH` | `data/showmeoff.db` | SQLite database for conversations and logs |
+| `DB_PATH` | `data/prove.db` | SQLite database for conversations and logs |
 | `NEO4J_URI` | `bolt://localhost:7687` | |
-| `NEO4J_PASSWORD` | `showmeoff` | |
+| `NEO4J_PASSWORD` | `prove` | |
 | `GITHUB_TOKEN` | — | For private repo access |
 | `GITHUB_OWNER` | `codeblackwell` | GitHub username for repo links |
 | `DOMAIN` | `localhost` | Domain for Caddy HTTPS (production only) |
@@ -166,10 +166,10 @@ Visitor identity is a composite of IP address + lightweight browser fingerprint 
 
 ```bash
 # Deploy / update (from server)
-cd /opt/showmeoff && git pull && docker compose -f docker-compose.prod.yml up -d --build
+cd /opt/prove && git pull && docker compose -f docker-compose.prod.yml up -d --build
 
 # Logs (from server)
-docker compose -f /opt/showmeoff/docker-compose.prod.yml logs -f
+docker compose -f /opt/prove/docker-compose.prod.yml logs -f
 
 # Full fresh deploy
 bash scripts/deploy.sh

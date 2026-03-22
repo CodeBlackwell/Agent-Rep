@@ -125,7 +125,7 @@ def ingest(resume_path: str, repo_sources: list[str], github_user: str = ""):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Ingest resume and repos into ShowMeOff")
+    parser = argparse.ArgumentParser(description="Ingest resume and repos into PROVE")
     parser.add_argument("--resume", required=True)
     parser.add_argument("--repos", nargs="*", default=[], help="Local paths or GitHub URLs")
     parser.add_argument("--github-user", default="", help="Fetch all repos for this GitHub username")

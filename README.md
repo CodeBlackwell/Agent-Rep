@@ -446,8 +446,8 @@ cp .env.example .env
 |----------|---------|-------|
 | `NEO4J_URI` | `bolt://localhost:7687` | Auto-set in `docker-compose.prod.yml` |
 | `NEO4J_USER` | `neo4j` | |
-| `NEO4J_PASSWORD` | `showmeoff` | Change this in production |
-| `DB_PATH` | `data/showmeoff.db` | SQLite for conversations, logs, rate limits |
+| `NEO4J_PASSWORD` | `prove` | Change this in production |
+| `DB_PATH` | `data/prove.db` | SQLite for conversations, logs, rate limits |
 
 ### GitHub
 
@@ -634,7 +634,7 @@ Neo4j is never exposed to the internet. Caddy handles TLS automatically.
 ssh root@your-server 'bash -s' < scripts/deploy.sh
 
 # On the server: configure and start
-cd /opt/showmeoff
+cd /opt/prove
 nano .env  # Set DOMAIN, API keys, NEO4J_PASSWORD
 docker compose -f docker-compose.prod.yml up -d --build
 
@@ -642,7 +642,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml logs -f
 
 # Update after code changes
-cd /opt/showmeoff && git pull && docker compose -f docker-compose.prod.yml up -d --build
+cd /opt/prove && git pull && docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ### Security

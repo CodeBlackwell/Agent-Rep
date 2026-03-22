@@ -108,7 +108,7 @@ class _StructuredLogger:
     def error(self, event: str, **kw):   self._log(logging.ERROR, event, **kw)
 
 
-_log = _StructuredLogger("showmeoff")
+_log = _StructuredLogger("prove")
 
 
 # Expose module-level convenience functions
@@ -288,7 +288,7 @@ def attach_db(db):
     Call this after build_clients() creates the Database. Log entries emitted
     before this call go only to console + JSONL (startup messages).
     """
-    root = logging.getLogger("showmeoff")
+    root = logging.getLogger("prove")
     handler = SQLiteHandler(db)
     root.addHandler(handler)
 
@@ -306,7 +306,7 @@ def setup_logging(level: str = "INFO", log_file: str = "logs/app.jsonl"):
         return
     _configured = True
 
-    root = logging.getLogger("showmeoff")
+    root = logging.getLogger("prove")
     root.setLevel(getattr(logging, level.upper(), logging.INFO))
     root.handlers.clear()
 

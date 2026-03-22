@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ShowMeOff deployment script for a fresh VPS (Ubuntu 22.04+)
+# PROVE deployment script for a fresh VPS (Ubuntu 22.04+)
 # Usage: ssh root@your-server 'bash -s' < scripts/deploy.sh
 
 REPO="https://github.com/CodeBlackwell/Agent-Rep.git"
-APP_DIR="/opt/showmeoff"
+APP_DIR="/opt/prove"
 
 echo "=== 1. Install Docker ==="
 if ! command -v docker &>/dev/null; then
@@ -34,7 +34,7 @@ fi
 echo "=== 4. Restore Neo4j data ==="
 # If dump exists and neo4j_data volume is empty, restore it
 if [ -f dump/neo4j.dump ]; then
-    VOLUME_EMPTY=$(docker volume ls -q | grep -c "showmeoff_neo4j_data" || true)
+    VOLUME_EMPTY=$(docker volume ls -q | grep -c "prove_neo4j_data" || true)
     if [ "$VOLUME_EMPTY" -eq 0 ]; then
         echo "Restoring Neo4j dump..."
         docker compose -f docker-compose.prod.yml up -d neo4j
@@ -43,7 +43,7 @@ if [ -f dump/neo4j.dump ]; then
 
         docker run --rm \
             -v "$(pwd)/dump:/dump" \
-            -v "showmeoff_neo4j_data:/data" \
+            -v "prove_neo4j_data:/data" \
             neo4j:5-community \
             neo4j-admin database load neo4j --from-path=/dump --overwrite-destination
 

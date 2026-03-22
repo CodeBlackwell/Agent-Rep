@@ -6,7 +6,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-_DEFAULT_DB_PATH = Path("data/showmeoff.db")
+_DEFAULT_DB_PATH = Path("data/prove.db")
 
 SCHEMA_SQL = """\
 PRAGMA journal_mode=WAL;

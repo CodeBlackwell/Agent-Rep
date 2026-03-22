@@ -7,13 +7,13 @@ optimize-svg:
 
 deploy:
     git push
-    ssh root@5.78.198.79 'cd /opt/showmeoff && git fetch origin && git reset --hard origin/main && git lfs pull && docker compose -f docker-compose.prod.yml up -d --build'
+    ssh root@5.78.198.79 'cd /opt/prove && git fetch origin && git reset --hard origin/main && git lfs pull && docker compose -f docker-compose.prod.yml up -d --build'
 
 backup tag="":
-    ssh root@5.78.198.79 'cd /opt/showmeoff && bash scripts/db-backup.sh {{tag}}'
+    ssh root@5.78.198.79 'cd /opt/prove && bash scripts/db-backup.sh {{tag}}'
 
 restore tag="":
-    ssh root@5.78.198.79 'cd /opt/showmeoff && bash scripts/db-restore.sh {{tag}}'
+    ssh root@5.78.198.79 'cd /opt/prove && bash scripts/db-restore.sh {{tag}}'
 
 backups:
     ssh root@5.78.198.79 'aws --endpoint-url https://hel1.your-objectstorage.com s3 ls s3://prove-backups/neo4j/'
