@@ -1,15 +1,12 @@
 # PROVE — portfolio AI agent
 prove.codeblackwell.ai {
-	# Static assets: serve directly from filesystem with pre-compression
+	# Static assets: ETag revalidation — always fresh, no manual cache busting
 	handle /static/* {
 		root * /srv/app
 		file_server {
 			precompressed br gzip
 		}
-		@versioned query v=*
-		header @versioned Cache-Control "public, max-age=31536000, immutable"
-		@unversioned not query v=*
-		header @unversioned Cache-Control "public, max-age=604800"
+		header Cache-Control "no-cache"
 	}
 
 	# API: no caching
