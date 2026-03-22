@@ -260,9 +260,11 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* Allow full height when graph panel is hidden */
+    max-height: 100%;
   }
 
-  /* Small gap between hero and chat */
+  /* Hero with smooth fade */
   .hero {
     padding: 0.6rem 0.8rem;
     border-radius: 10px;
@@ -270,15 +272,28 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     margin-bottom: 0.35rem;
     max-height: 500px;
     overflow: hidden;
-    transition: max-height 0.6s ease, padding 0.6s ease, opacity 0.5s ease, margin 0.6s ease;
+    transition: max-height 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                padding 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.8s ease-out,
+                margin 1.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Mobile: chat only, no graph views */
-  .viz-toggle,
-  #graph-container,
-  .graph-filter,
-  .graph-empty,
-  .legend {
+  /* After first query: hero fades away, chat stretches to full screen */
+  .hero-faded .hero {
+    max-height: 0;
+    padding: 0;
+    opacity: 0;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .hero-faded #chat-panel {
+    flex: 1;
+    border-radius: 10px;
+  }
+
+  /* Mobile: no graph panel at all */
+  #graph-panel {
     display: none !important;
   }
 
@@ -291,72 +306,15 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     opacity: 0.6;
   }
 
-  /* Before first query: hero + chat visible, graph panel hidden */
-  #graph-panel {
-    display: none !important;
-  }
-
-  /* After first question: flip — hide left-col, show graph-panel as sole container */
-  .hero-faded .left-col {
-    display: none !important;
-  }
-
-  .hero-faded #graph-panel {
-    display: flex !important;
-    flex: 1;
-    max-height: none;
-  }
-
-  /* Mobile chat container (DOM-relocated messages + form) */
-  #mobile-chat {
-    flex: 1;
-    display: none;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  #mobile-chat #messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.5rem 0.6rem;
-  }
-
-  #mobile-chat #chat-form {
-    padding: 0.4rem 0.6rem;
-    border-top: 1px solid rgba(212, 205, 196, 0.3);
-  }
-
-  /* Hero fade animation */
-  .hero-faded .hero {
-    max-height: 0;
-    padding: 0;
-    opacity: 0;
-    margin: 0;
-    pointer-events: none;
-  }
-
-  .hero-faded #chat-panel {
-    flex: 1;
-    border-radius: 10px;
-    min-height: 0;
-  }
-
-  .hero-faded #graph-panel {
-    flex: 0 0 auto;
-    max-height: 55vh;
-    overflow-y: auto;
-  }
 
   #chat-panel {
     flex: 1;
     min-height: 0;
     padding: 0.5rem 0.6rem;
-    border-radius: 0 0 10px 10px;
-    border-top: 1px solid rgba(212, 205, 196, 0.3);
+    border-radius: 10px;
     background: rgba(250, 247, 242, 0.78);
     overflow-y: auto;
-    transition: flex 0.6s ease, border-radius 0.4s ease;
+    transition: flex 1.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   #graph-panel {

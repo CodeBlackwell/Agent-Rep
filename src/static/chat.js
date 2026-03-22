@@ -174,14 +174,10 @@ form.addEventListener('submit', e => {
 
   dismissStarters();
 
-  // On mobile, fade hero and relocate chat into graph panel
+  // Fade hero on first question — chat stretches to fill
   if (!heroFaded) {
     heroFaded = true;
     document.body.classList.add('hero-faded');
-    // Trigger DOM relocation on mobile (graph.js handles this)
-    if (window.innerWidth < 768 && window.switchVizMode) {
-      window.switchVizMode('chat');
-    }
   }
 
   addMessage('user', q);
