@@ -8,7 +8,7 @@ from src.ingestion.git_dates import get_chunk_dates
 from src.ingestion.skill_classifier import classify_chunks
 from src.ingestion.skill_taxonomy import ALL_SKILLS
 
-SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".env", "dist", "build", ".next"}
+SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", ".env", "dist", "build", ".next", "portfolio"}
 CODE_EXTENSIONS = {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rs", ".rb", ".cpp", ".c", ".h"}
 LANG_LABELS = {
     "py": "Python", "js": "JavaScript", "ts": "TypeScript", "tsx": "TypeScript",

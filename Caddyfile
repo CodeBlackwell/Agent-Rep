@@ -1,6 +1,22 @@
 # PROVE — portfolio AI agent
 prove.codeblackwell.ai {
-	reverse_proxy app:7860
+	# Serve static files directly from Caddy with pre-compression
+	handle /static/* {
+		root * /srv/app
+		file_server {
+			precompressed br gzip
+		}
+		@versioned query v=*
+		header @versioned Cache-Control "public, max-age=31536000, immutable"
+		@unversioned not query v=*
+		header @unversioned Cache-Control "public, max-age=604800"
+	}
+
+	# Everything else proxied to FastAPI
+	handle {
+		reverse_proxy app:7860
+		header @api Cache-Control "no-store"
+	}
 
 	header {
 		X-Content-Type-Options nosniff
@@ -8,8 +24,6 @@ prove.codeblackwell.ai {
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
 	}
-
-	encode gzip
 
 	log {
 		output file /data/access.log

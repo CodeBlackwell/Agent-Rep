@@ -233,21 +233,29 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 /* ── Mobile: tablets & small laptops ────────── */
 @media (max-width: 768px) {
   body {
-    overflow: auto;
-    height: auto;
+    overflow: hidden;
+    height: 100dvh;
+    height: 100vh; /* fallback for older browsers */
+    height: 100dvh;
   }
 
   main {
     flex-direction: column;
-    height: auto;
-    min-height: 100dvh;
+    height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
     padding: 0.75rem;
     gap: 0;
+    overflow: hidden;
   }
 
   .left-col {
-    flex: none;
+    flex: 1;
+    min-height: 0;
     gap: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Close the gap between hero and chat — merge into one visual block */
@@ -264,12 +272,15 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     border-radius: 0 0 12px 12px;
     border-top: 1px solid rgba(212, 205, 196, 0.3);
     background: rgba(250, 247, 242, 0.78);
+    overflow-y: auto;
   }
 
   #graph-panel {
     min-height: 0;
+    max-height: 40dvh;
     margin-top: 0.75rem;
     background: rgba(250, 247, 242, 0.78);
+    overflow-y: auto;
   }
 
   /* Collapse graph container until data arrives */
