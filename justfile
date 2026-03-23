@@ -6,7 +6,9 @@ APP_DIR := env("PROVE_APP_DIR", "/opt/prove")
 
 dev:
     -lsof -ti :7860 | xargs kill 2>/dev/null
-    @docker compose up -d --wait 2>/dev/null || true
+    @echo "Starting Neo4j..."
+    @docker compose up -d --wait || echo "⚠ Neo4j failed to start — is Docker running?"
+    @echo "Neo4j ready."
     CHAT_PROVIDER=anthropic EMBED_PROVIDER=voyage uv run uvicorn src.app:app --port 7860 --reload
 
 optimize-svg:
