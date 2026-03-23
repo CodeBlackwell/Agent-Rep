@@ -258,7 +258,8 @@ class TestJDModal:
         try:
             page.locator("#jd-btn").click()
             page.wait_for_timeout(500)
-            page.locator(".jd-modal__backdrop").click(force=True)
+            # Click near top-left of backdrop (outside the centered panel)
+            page.locator(".jd-modal__backdrop").click(position={"x": 5, "y": 5})
             page.wait_for_timeout(500)
             modal = page.locator(".jd-modal--open")
             assert modal.count() == 0, "Modal should close on backdrop click"
@@ -416,7 +417,11 @@ class TestCanvasToggle:
         ctx, page = make_page(device, BASE_URL)
         try:
             page.locator("#canvas-toggle").click()
-            page.wait_for_timeout(800)
+            # Headless WebKit runs CSS transitions much slower than wall clock
+            page.wait_for_function(
+                "window.getComputedStyle(document.querySelector('.left-col')).opacity === '0'",
+                timeout=10000,
+            )
             opacity = page.evaluate("""
                 window.getComputedStyle(document.querySelector('.left-col')).opacity
             """)

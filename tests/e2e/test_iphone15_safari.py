@@ -470,11 +470,14 @@ class TestiPhone15FullFlow:
 
             # Toggle on
             page.locator("#canvas-toggle").tap()
-            page.wait_for_timeout(800)
             assert page.evaluate("document.body.classList.contains('canvas-mode')"), \
                 "Canvas mode should be active"
 
-            # Content should be hidden
+            # Wait for CSS transition to complete (headless WebKit runs transitions slowly)
+            page.wait_for_function(
+                "window.getComputedStyle(document.querySelector('.left-col')).opacity === '0'",
+                timeout=10000,
+            )
             left_opacity = page.evaluate("""
                 window.getComputedStyle(document.querySelector('.left-col')).opacity
             """)
@@ -482,11 +485,14 @@ class TestiPhone15FullFlow:
 
             # Toggle off
             page.locator("#canvas-toggle").tap()
-            page.wait_for_timeout(800)
             assert not page.evaluate("document.body.classList.contains('canvas-mode')"), \
                 "Canvas mode should be off"
 
-            # Content returns
+            # Wait for content to return
+            page.wait_for_function(
+                "window.getComputedStyle(document.querySelector('.left-col')).opacity === '1'",
+                timeout=10000,
+            )
             left_opacity = page.evaluate("""
                 window.getComputedStyle(document.querySelector('.left-col')).opacity
             """)
