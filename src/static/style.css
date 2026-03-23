@@ -313,18 +313,8 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
     border-radius: 10px;
   }
 
-  /* Mobile: no graph panel at all */
-  #graph-panel {
-    display: none !important;
-  }
-
   .mobile-viz-note {
-    display: block;
-    text-align: center;
-    font-size: 0.68rem;
-    color: var(--ink-faint);
-    padding: 0.3rem 0;
-    opacity: 0.6;
+    display: none;
   }
 
 
@@ -530,6 +520,10 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 /* ── Mobile: phones ────────────────────────── */
 @media (max-width: 480px) {
+  /* Hide graph panel on phones — too small to be useful */
+  #graph-panel { display: none !important; }
+  .mobile-viz-note { display: block; text-align: center; font-size: 0.68rem; color: var(--ink-faint); padding: 0.3rem 0; opacity: 0.6; }
+
   main {
     padding: 0.5rem;
   }
