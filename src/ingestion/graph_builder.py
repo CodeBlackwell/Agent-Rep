@@ -51,14 +51,18 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
 
     default_branch = _detect_default_branch(repo_path)
 
+    embed_prop = neo4j_client.embed_property
+
     with neo4j_client.driver.session() as session:
         session.run(
             "MERGE (r:Repository {name: $name}) SET r.path = $path, r.default_branch = $branch",
             name=repo_name, path=str(repo_path), branch=default_branch,
         )
 
-        for file_path in all_files:
-            rel_path = str(file_path.relative_to(repo_path))
+    for file_path in all_files:
+        rel_path = str(file_path.relative_to(repo_path))
+
+        with neo4j_client.driver.session() as session:
             session.run(
                 "MATCH (r:Repository {name: $repo}) "
                 "MERGE (f:File {path: $path}) "
@@ -71,7 +75,6 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
                 continue
 
             # Skip file if all chunks already embedded for this provider
-            embed_prop = neo4j_client.embed_property
             existing = session.run(
                 f"MATCH (cs:CodeSnippet {{file_path: $fp}}) WHERE cs.{embed_prop} IS NOT NULL "
                 "RETURN count(cs) AS c",
@@ -87,46 +90,48 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
                     _link_chunk_skills(session, chunk, rel_path, chunk_skills, repo_path)
                 continue
 
-            # Classify first so skills are available for preamble
-            logger.debug("graph.classify", file=rel_path, chunk_count=len(chunks))
-            skills_per_chunk = classify_chunks(chunks, chat_client)
+        # Classify first so skills are available for preamble
+        logger.debug("graph.classify", file=rel_path, chunk_count=len(chunks))
+        skills_per_chunk = classify_chunks(chunks, chat_client)
 
-            # Generate contextual descriptions (reuse existing if available)
+        # Generate contextual descriptions (reuse existing if available)
+        with neo4j_client.driver.session() as session:
             existing_contexts = session.run(
                 "MATCH (cs:CodeSnippet {file_path: $fp}) "
                 "RETURN cs.name AS name, cs.context AS context",
                 fp=rel_path,
             ).data()
-            ctx_map = {r["name"]: r["context"] for r in existing_contexts if r["context"]}
+        ctx_map = {r["name"]: r["context"] for r in existing_contexts if r["context"]}
 
-            needs_context = [
-                (i, c, skills)
-                for i, (c, skills) in enumerate(zip(chunks, skills_per_chunk))
-                if c.name not in ctx_map
+        needs_context = [
+            (i, c, skills)
+            for i, (c, skills) in enumerate(zip(chunks, skills_per_chunk))
+            if c.name not in ctx_map
+        ]
+
+        contexts = [ctx_map.get(c.name, "") for c in chunks]
+
+        if needs_context:
+            snippet_dicts = [
+                {"name": c.name, "file_path": rel_path, "content": c.content,
+                 "language": c.language, "repo": repo_name, "skills": list(skills)}
+                for _, c, skills in needs_context
             ]
+            new_contexts = generate_contexts(snippet_dicts, chat_client,
+                                             skills_list=", ".join(ALL_SKILLS))
+            for (i, _, _), ctx in zip(needs_context, new_contexts):
+                contexts[i] = ctx
 
-            contexts = [ctx_map.get(c.name, "") for c in chunks]
+        # Embed with context + metadata preamble + code
+        texts = [
+            (ctx + "\n" if ctx else "")
+            + build_preamble(c.name, c.language, rel_path, repo_name, list(skills))
+            + "\nCode:\n" + c.content
+            for c, skills, ctx in zip(chunks, skills_per_chunk, contexts)
+        ]
+        embeddings = embed_client.embed(texts)
 
-            if needs_context:
-                snippet_dicts = [
-                    {"name": c.name, "file_path": rel_path, "content": c.content,
-                     "language": c.language, "repo": repo_name, "skills": list(skills)}
-                    for _, c, skills in needs_context
-                ]
-                new_contexts = generate_contexts(snippet_dicts, chat_client,
-                                                 skills_list=", ".join(ALL_SKILLS))
-                for (i, _, _), ctx in zip(needs_context, new_contexts):
-                    contexts[i] = ctx
-
-            # Embed with context + metadata preamble + code
-            texts = [
-                (ctx + "\n" if ctx else "")
-                + build_preamble(c.name, c.language, rel_path, repo_name, list(skills))
-                + "\nCode:\n" + c.content
-                for c, skills, ctx in zip(chunks, skills_per_chunk, contexts)
-            ]
-            embeddings = embed_client.embed(texts)
-
+        with neo4j_client.driver.session() as session:
             for chunk, embedding, chunk_skills, ctx in zip(chunks, embeddings, skills_per_chunk, contexts):
                 session.run(
                     "MATCH (f:File {path: $file_path}) "
@@ -142,11 +147,11 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
                 )
                 _link_chunk_skills(session, chunk, rel_path, chunk_skills, repo_path)
 
-            file_count += 1
-            pct = int(file_count / total_files * 100) if total_files else 0
-            logger.info("graph.progress", repo=repo_name,
-                        files_processed=file_count, total_files=total_files,
-                        percent=pct)
+        file_count += 1
+        pct = int(file_count / total_files * 100) if total_files else 0
+        logger.info("graph.progress", repo=repo_name,
+                    files_processed=file_count, total_files=total_files,
+                    percent=pct)
 
     logger.info("graph.build_done", repo=repo_name, files_total=file_count)
     neo4j_client.compute_repo_rollups(repo_name)

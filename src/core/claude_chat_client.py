@@ -44,7 +44,11 @@ class ClaudeChatClient:
                 )
                 return shaped
 
-            except anthropic.RateLimitError:
+            except (anthropic.RateLimitError, anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+                if isinstance(exc, anthropic.APIStatusError) and exc.status_code not in (429, 529):
+                    logger.log_llm_error(provider="anthropic", error=str(exc),
+                                         purpose=purpose)
+                    raise
                 wait = min(2 ** attempt * 5, 120)
                 logger.log_llm_retry(provider="anthropic", attempt=attempt + 1,
                                      wait_s=wait)

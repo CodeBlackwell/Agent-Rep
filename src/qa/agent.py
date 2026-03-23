@@ -452,7 +452,7 @@ class QAAgent:
             raw = _strip_think(response.choices[0].message.content)
             raw = re.sub(r"^```\w*\n|```$", "", raw.strip())
             return json.loads(raw)
-        except (json.JSONDecodeError, Exception) as e:
+        except Exception as e:
             logger.warning("agent.annotate_failed", error=str(e))
             return None
 
@@ -499,7 +499,7 @@ class QAAgent:
                     meta.append({"mode": k.get("mode", "inline"), "explanation": k.get("explanation", "")})
             logger.log_curation(kept=len(curated), dropped=dropped, total=len(evidence))
             return curated or evidence[:MAX_EVIDENCE_SHOWN], meta or None
-        except (json.JSONDecodeError, Exception) as e:
+        except Exception as e:
             logger.warning("agent.curate_failed", error=str(e), fallback="annotate")
             shown = evidence[:MAX_EVIDENCE_SHOWN]
             annotations = self._annotate_evidence(question, shown)
@@ -531,6 +531,10 @@ class QAAgent:
             choice = response.choices[0]
             if not choice.message.tool_calls:
                 logger.info("agent.react_done", step=step + 1, reason="final_answer")
+                repos = {e.get("repo") for e in all_evidence if e.get("repo")}
+                skills = {e.get("skill_name") for e in all_evidence if e.get("skill_name")}
+                logger.log_evidence(collected=len(all_evidence),
+                                    unique_repos=len(repos), unique_skills=len(skills))
                 sorted_ev = _sort_evidence(all_evidence)
                 curated, curation_meta = self._curate_evidence(question, sorted_ev)
                 return format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), show_private_code=self.show_private_code, github_owner=self.github_owner)
@@ -551,7 +555,7 @@ class QAAgent:
         logger.log_evidence(collected=len(all_evidence),
                             unique_repos=len(repos), unique_skills=len(skills))
 
-        return format_response(_trim_answer(_strip_think(response.choices[0].message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), github_owner=self.github_owner)
+        return format_response(_trim_answer(_strip_think(response.choices[0].message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), show_private_code=self.show_private_code, github_owner=self.github_owner)
 
     def answer_stream(self, question: str,
                        history: list[dict] | None = None) -> Generator[str | dict, None, None]:

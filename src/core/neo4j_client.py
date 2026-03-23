@@ -1,6 +1,9 @@
+import re
+
 from neo4j import GraphDatabase
 
 EMBED_PROVIDERS = ("nim", "voyage")
+_SAFE_INDEX_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 class Neo4jClient:
@@ -11,6 +14,8 @@ class Neo4jClient:
         self.embed_provider = embed_provider
         self.embed_property = f"embedding_{embed_provider}"
         self.vector_index = f"code_embedding_{embed_provider}"
+        if not _SAFE_INDEX_RE.match(self.vector_index):
+            raise ValueError(f"Invalid vector index name: '{self.vector_index}'")
 
     def init_schema(self):
         with self.driver.session() as session:
@@ -111,6 +116,7 @@ class Neo4jClient:
             "RETURN properties(c) AS props, d.first_seen AS first_seen, "
             "d.last_seen AS last_seen, s.proficiency AS proficiency, "
             "r.name AS repo, r.private AS private "
+            "ORDER BY d.snippet_lines DESC "
             "LIMIT 10"
         )
         with self.driver.session() as session:
