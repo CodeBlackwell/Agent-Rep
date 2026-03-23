@@ -758,11 +758,13 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .jd-btn:hover { background: var(--accent); border-color: var(--accent); }
 
-/* Mobile tap targets — must come after base .jd-btn to win cascade */
+/* Mobile overrides — must come after base rules to win cascade */
 @media (max-width: 768px) {
+  #chat-panel { padding: 0.5rem 0.6rem; overflow-y: auto; }
   .jd-btn { width: 44px; height: 44px; }
 }
 @media (max-width: 480px) {
+  #chat-panel { padding: 0.3rem 0.5rem; }
   .jd-btn { width: 48px; height: 48px; }
 }
 
