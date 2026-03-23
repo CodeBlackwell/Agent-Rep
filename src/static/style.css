@@ -255,7 +255,7 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 .mobile-viz-note { display: none; }
 
 /* ── Mobile: tablets & small laptops ────────── */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   body {
     overflow: hidden;
     height: 100dvh;
@@ -779,7 +779,7 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 .send-btn:hover { opacity: 0.85; }
 
 /* Mobile overrides — must come after base rules to win cascade */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   #chat-panel { padding: 0.5rem 0.6rem; overflow-y: auto; }
   .jd-btn { width: 25px; height: 25px; }
   .jd-btn svg { width: 13px; height: 13px; }
