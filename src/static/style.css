@@ -667,6 +667,32 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .msg-assistant pre code { background: none; padding: 0; color: var(--ink); }
 
+/* Highlight.js overrides — warm tones to match palette */
+.msg-assistant pre code.hljs { background: var(--surface); padding: 0; }
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in { color: #8c5a30; }        /* clay */
+.hljs-string, .hljs-attr { color: #4a6340; }                                  /* moss */
+.hljs-comment, .hljs-quote { color: #9a8b7a; font-style: italic; }            /* warm gray */
+.hljs-function .hljs-title, .hljs-title.function_ { color: #6b4c2a; }         /* accent */
+.hljs-number, .hljs-literal { color: #a0522d; }                               /* sienna */
+.hljs-type, .hljs-title.class_ { color: #5b7a4a; }                            /* sage */
+.hljs-variable, .hljs-template-variable { color: var(--ink); }
+.hljs-meta { color: var(--ink-faint); }
+
+/* Collapsible code blocks */
+.code-collapse { margin: 0.5rem 0; border-left: 2px solid var(--stone); }
+.code-collapse__toggle {
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.25rem 0.6rem; cursor: pointer;
+  font-size: 0.72rem; color: var(--ink-faint);
+  user-select: none; list-style: none;
+  font-family: var(--font-body, inherit);
+}
+.code-collapse__toggle::-webkit-details-marker { display: none; }
+.code-collapse__toggle::marker { content: ''; }
+.code-collapse__arrow { font-size: 0.6rem; transition: transform 0.2s; }
+.code-collapse:not([open]) .code-collapse__arrow { transform: rotate(-90deg); }
+.code-collapse pre { border-left: none; margin: 0; }
+
 /* Starter question buttons */
 .starter-questions {
   display: flex;

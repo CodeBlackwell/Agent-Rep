@@ -74,7 +74,10 @@ function renderMarkdown(text) {
   // Escape HTML first, then apply markdown transforms
   return _escChat(text)
     .replace(/```mermaid\n([\s\S]*?)```/g, '<div class="mermaid">$1</div>')
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/```(\w*)\n([\s\S]*?)```/g, function(_, lang, code) {
+      var cls = lang ? ' class="language-' + lang + '"' : '';
+      return '<pre><code' + cls + '>' + code + '</code></pre>';
+    })
     .replace(/^### (.+)$/gm, '<h4>$1</h4>')
     .replace(/^## (.+)$/gm, '<h3>$1</h3>')
     .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
@@ -100,6 +103,35 @@ function renderMermaidBlocks(container) {
     } catch (e) {
       el.innerHTML = '<pre><code>' + code + '</code></pre>';
     }
+  });
+}
+
+/* ── Collapsible code blocks ──────────────────────────────── */
+
+function highlightCode(container) {
+  if (!window.hljs) return;
+  container.querySelectorAll('pre code:not([data-highlighted])').forEach(el => {
+    hljs.highlightElement(el);
+  });
+}
+
+function wrapCodeBlocks(container) {
+  highlightCode(container);
+  const pres = container.querySelectorAll('pre');
+  if (!pres.length) return;
+  pres.forEach(pre => {
+    if (pre.closest('.code-collapse')) return;           // already wrapped
+    const code = pre.querySelector('code');
+    const lines = (code || pre).textContent.split('\n').length;
+    const details = document.createElement('details');
+    details.className = 'code-collapse';
+    details.open = true;
+    const summary = document.createElement('summary');
+    summary.className = 'code-collapse__toggle';
+    summary.innerHTML = '<span class="code-collapse__arrow">▾</span> ' + lines + ' line' + (lines !== 1 ? 's' : '');
+    pre.parentNode.insertBefore(details, pre);
+    details.appendChild(summary);
+    details.appendChild(pre);
   });
 }
 
@@ -304,7 +336,7 @@ form.addEventListener('submit', e => {
       else if (d.phase === 'answering') addStep('Composing answer\u2026');
       /* no auto-scroll — let the user read at their own pace */
     } else {
-      if (data === '[DONE]') { collapseStatus(); cleanup(); return; }
+      if (data === '[DONE]') { collapseStatus(); if (assistantDiv) wrapCodeBlocks(assistantDiv); cleanup(); return; }
       if (loader.parentNode) loader.remove();
       collapseStatus();
       if (!assistantDiv) assistantDiv = addMessage('assistant', data);
