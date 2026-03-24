@@ -268,6 +268,8 @@ def format_response(answer: str, evidence: list[dict], annotations: list[str] | 
             if force_link or (cur and cur.get("mode") == "link"):
                 explanation = cur["explanation"] if cur and cur.get("explanation") else e.get("context", "")
                 lines.append(f"\n{link}")
+                if force_link:
+                    lines.append("`[CODE REDACTED — PRIVATE REPO]`")
                 if explanation:
                     lines.append(f"> {explanation}")
             else:
@@ -633,4 +635,30 @@ class QAAgent:
         yield {"_status": True, "phase": "curating"}
         curated, curation_meta = self._curate_evidence(question, sorted_ev)
         yield {"_status": True, "phase": "answering"}
+
+        # Emit all evidence metadata for the confidence panel
+        evidence_refs = []
+        for e in sorted_ev:
+            ref = {
+                "repo": e.get("repo", ""),
+                "path": e.get("file_path", ""),
+                "start_line": e.get("start_line", 0),
+                "end_line": e.get("end_line", 0),
+                "context": e.get("context", ""),
+                "proficiency": e.get("proficiency", ""),
+                "skill": e.get("skill_name", ""),
+                "private": e.get("private", False),
+            }
+            lang = ref["path"].rsplit(".", 1)[-1] if "." in ref["path"] else ""
+            ref["language"] = lang
+            evidence_refs.append(ref)
+        confidence = _compute_confidence(all_evidence)
+        yield {
+            "_evidence": True,
+            "confidence": confidence,
+            "total": len(all_evidence),
+            "references": evidence_refs,
+            "github_owner": self.github_owner,
+        }
+
         yield format_response(_trim_answer(_strip_think(choice.message.content or "")), curated, curation=curation_meta, total_count=len(all_evidence), show_private_code=self.show_private_code, github_owner=self.github_owner)

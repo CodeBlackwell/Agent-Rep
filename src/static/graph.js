@@ -321,6 +321,9 @@ function _ensureModal() {
   return refModal;
 }
 
+// Expose for chat.js evidence panel reuse
+window._ensureRefModal = _ensureModal;
+
 function closeRefModal() {
   if (refModal) refModal.classList.remove('ref-modal--open');
 }

@@ -1350,6 +1350,17 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   text-align: center;
 }
 
+/* Clickable confidence badge in chat */
+.confidence-link {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--ink-faint);
+  transition: color 0.15s, border-color 0.15s;
+}
+.confidence-link:hover {
+  color: var(--basil);
+  border-color: var(--basil);
+}
+
 .ref-modal__body {
   overflow-y: auto;
   padding: 0.6rem 1.4rem 1.2rem;
@@ -1409,6 +1420,16 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   background: #7a8b6f15;
   padding: 0.05rem 0.35rem;
   border-radius: 3px;
+}
+
+.ref-item__redacted {
+  font-size: 0.65rem;
+  color: var(--paprika);
+  background: #c0453515;
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .ref-item__name {

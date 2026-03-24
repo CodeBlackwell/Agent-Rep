@@ -138,6 +138,137 @@ function wrapCodeBlocks(container) {
   });
 }
 
+/* ── Confidence → evidence panel ───────────────────────────── */
+
+function wireConfidenceLink(container, evidenceData) {
+  if (!evidenceData || !evidenceData.references || !evidenceData.references.length) return;
+  // Find the last text node containing "Confidence:"
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.textContent.includes('Confidence:')) {
+      const span = document.createElement('span');
+      span.className = 'confidence-link';
+      span.textContent = node.textContent.trim();
+      span.title = 'Click to browse all evidence';
+      span.addEventListener('click', function() { openEvidencePanel(evidenceData); });
+      node.parentNode.replaceChild(span, node);
+      return;
+    }
+  }
+}
+
+function openEvidencePanel(data) {
+  // Reuse the ref-modal from graph.js
+  var m = window._ensureRefModal ? window._ensureRefModal() : null;
+  if (!m) {
+    // Fallback: create a minimal modal if graph.js hasn't loaded
+    m = document.querySelector('.ref-modal');
+    if (!m) return;
+  }
+
+  var header = m.querySelector('.ref-modal__header');
+  var body = m.querySelector('.ref-modal__body');
+
+  // Group by repo
+  var byRepo = new Map();
+  for (var ref of data.references) {
+    var repo = ref.repo || 'unknown';
+    if (!byRepo.has(repo)) byRepo.set(repo, []);
+    byRepo.get(repo).push(ref);
+  }
+  var repoNames = [...byRepo.keys()];
+  var owner = data.github_owner || 'codeblackwell';
+
+  // Confidence badge class
+  var confClass = data.confidence === 'Strong' ? 'tip-prof--extensive'
+    : data.confidence === 'Partial' ? 'tip-prof--moderate' : 'tip-prof--minimal';
+
+  header.innerHTML =
+    '<h2>Evidence Overview</h2>' +
+    '<div class="ref-modal__meta">' +
+      '<span class="tip-prof ' + confClass + '">' + data.confidence + '</span>' +
+      '<span class="ref-modal__stats">' + data.total +
+        ' snippet' + (data.total !== 1 ? 's' : '') +
+        ' across ' + repoNames.length +
+        ' repo' + (repoNames.length !== 1 ? 's' : '') +
+      '</span>' +
+    '</div>';
+
+  // Repo filter
+  if (repoNames.length > 1) {
+    var filterDiv = document.createElement('div');
+    filterDiv.className = 'ref-filter';
+    var allBtn = document.createElement('button');
+    allBtn.className = 'ref-filter__btn ref-filter__btn--active';
+    allBtn.textContent = 'All (' + data.references.length + ')';
+    allBtn.dataset.repo = '';
+    filterDiv.appendChild(allBtn);
+    for (var rn of repoNames) {
+      var btn = document.createElement('button');
+      btn.className = 'ref-filter__btn';
+      btn.textContent = rn + ' (' + byRepo.get(rn).length + ')';
+      btn.dataset.repo = rn;
+      filterDiv.appendChild(btn);
+    }
+    header.appendChild(filterDiv);
+    filterDiv.addEventListener('click', function(e) {
+      var b = e.target.closest('.ref-filter__btn');
+      if (!b) return;
+      filterDiv.querySelectorAll('.ref-filter__btn').forEach(function(x) { x.classList.remove('ref-filter__btn--active'); });
+      b.classList.add('ref-filter__btn--active');
+      _renderEvidenceList(body, byRepo, b.dataset.repo || null, owner);
+    });
+  }
+
+  _renderEvidenceList(body, byRepo, null, owner);
+  m.classList.add('ref-modal--open');
+}
+
+function _renderEvidenceList(body, byRepo, filterRepo, owner) {
+  var html = '';
+  var LANG_LABELS = { py: 'Python', js: 'JavaScript', ts: 'TypeScript', tsx: 'TypeScript', jsx: 'JavaScript', java: 'Java', go: 'Go', rs: 'Rust', rb: 'Ruby', cpp: 'C++', c: 'C' };
+  var hasPrivate = false;
+
+  for (var [repo, refs] of byRepo) {
+    if (filterRepo && repo !== filterRepo) continue;
+    var isPrivate = refs[0] && refs[0].private;
+    if (isPrivate) hasPrivate = true;
+    var repoUrl = 'https://github.com/' + owner + '/' + repo;
+    var lock = isPrivate ? '<span class="ref-repo__lock" title="Private repository">\u{1F512}</span>' : '';
+    html += '<div class="ref-repo">';
+    html += '<h3 class="ref-repo__name"><a href="' + repoUrl + '" target="_blank">' + repo + '</a> ' + lock + '</h3>';
+
+    for (var ref of refs) {
+      var branch = 'main';
+      var url = 'https://github.com/' + owner + '/' + ref.repo + '/blob/' + branch + '/' + ref.path + '#L' + ref.start_line;
+      var langLabel = LANG_LABELS[ref.language] || ref.language || '';
+      var lineRange = ref.end_line > ref.start_line
+        ? 'L' + ref.start_line + '\u2013' + ref.end_line
+        : 'L' + ref.start_line;
+
+      html += '<div class="ref-item">';
+      html += '<div class="ref-item__file">';
+      html += '<a href="' + url + '" target="_blank" class="ref-item__link">' + ref.path + '</a>';
+      html += '<span class="ref-item__line">' + lineRange + '</span>';
+      if (langLabel) html += '<span class="ref-item__lang">' + langLabel + '</span>';
+      if (ref.private) html += '<span class="ref-item__redacted">CODE REDACTED — PRIVATE REPO</span>';
+      html += '</div>';
+      if (ref.skill) html += '<div class="ref-item__name">' + ref.skill + '</div>';
+      if (ref.context) html += '<div class="ref-item__context">' + ref.context + '</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  if (hasPrivate) {
+    html += '<div class="ref-private-note">\u{1F512} Some code lives in a private repo. ' +
+      'I\u2019d love to walk you through it \u2014 <a href="https://github.com/' + owner + '" target="_blank">reach out</a>!</div>';
+  }
+
+  body.innerHTML = html;
+}
+
 function addMessage(role, content) {
   const div = document.createElement('div');
   div.className = `msg msg-${role}`;
@@ -257,6 +388,7 @@ form.addEventListener('submit', e => {
   addMessage('user', q);
   const loader = addLoading();
   let assistantDiv = null;
+  let pendingEvidence = null;
 
   // Status tracker state
   let statusDiv = null;
@@ -332,6 +464,8 @@ form.addEventListener('submit', e => {
       sessionId = JSON.parse(data).session_id;
     } else if (eventType === 'graph') {
       window.updateGraph(JSON.parse(data));
+    } else if (eventType === 'evidence') {
+      pendingEvidence = JSON.parse(data);
     } else if (eventType === 'status') {
       const d = JSON.parse(data);
       if (d.phase === 'tool') { toolCount++; addStep(toolLabel(d.tool, d.args || {})); }
@@ -339,7 +473,15 @@ form.addEventListener('submit', e => {
       else if (d.phase === 'answering') addStep('Composing answer\u2026');
       /* no auto-scroll — let the user read at their own pace */
     } else {
-      if (data === '[DONE]') { collapseStatus(); if (assistantDiv) wrapCodeBlocks(assistantDiv); cleanup(); return; }
+      if (data === '[DONE]') {
+        collapseStatus();
+        if (assistantDiv) {
+          wrapCodeBlocks(assistantDiv);
+          wireConfidenceLink(assistantDiv, pendingEvidence);
+        }
+        cleanup();
+        return;
+      }
       if (loader.parentNode) loader.remove();
       collapseStatus();
       if (!assistantDiv) assistantDiv = addMessage('assistant', data);

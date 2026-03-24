@@ -154,6 +154,8 @@ def chat(request: Request, q: str, session_id: str | None = None, fp: str | None
             if isinstance(chunk, dict):
                 if chunk.get("_status"):
                     yield f"event: status\ndata: {json.dumps(chunk)}\n\n"
+                elif chunk.get("_evidence"):
+                    yield f"event: evidence\ndata: {json.dumps(chunk)}\n\n"
                 else:
                     yield f"event: graph\ndata: {json.dumps(chunk)}\n\n"
             else:
