@@ -471,7 +471,10 @@ const TreemapRenderer = {
     const root = d3.hierarchy(tree)
       .sum(d => {
         if (d.children) return 0;
-        return Math.max(d.evidence_count || 0, 20); // min size for claimed/gap
+        // Use log scale so high-volume skills (Testing: 10k) don't swallow
+        // smaller but significant ones (FastAPI: 330). Min floor for gaps.
+        const count = Math.max(d.evidence_count || 0, 20);
+        return Math.log1p(count);
       })
       .sort((a, b) => (b.value || 0) - (a.value || 0));
 
