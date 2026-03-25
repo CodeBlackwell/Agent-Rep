@@ -615,41 +615,81 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   }
 }
 
-/* ── Repo tile rails (inside #graph-panel) ───── */
-.repo-rail {
+/* ── Exhibits container (inside #graph-panel) ── */
+.exhibits-container {
   position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+  pointer-events: none;
+}
+.exhibits-container > * { pointer-events: auto; }
+.exhibits-container--hidden { display: none; }
+
+/* Side columns: left and right flanking the howto */
+.exhibits-sides {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem clamp(1.5rem, 3vw, 3rem);
+  min-height: 0;
+}
+.exhibits-col {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  z-index: 6;
-  transition: opacity 0.8s ease, transform 0.8s ease;
-}
-.repo-rail--left  { left: 4rem; top: 50%; transform: translateY(-50%); }
-.repo-rail--right { right: 4rem; top: 50%; transform: translateY(-50%); }
-.repo-rail--bottom {
-  flex-direction: row;
-  bottom: 3rem;
-  left: 50%;
-  transform: translateX(-50%);
-  gap: 1rem;
+  align-items: center;
+  flex-shrink: 0;
 }
 
-.repo-rail--hidden,
-.hero-faded .repo-rail {
-  opacity: 0;
-  pointer-events: none;
+/* Showcase row: featured projects at bottom */
+.exhibits-showcase {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: clamp(1rem, 3vw, 2rem);
+  padding: 0.5rem 2rem 1.5rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
-.repo-rail--left.repo-rail--hidden,
-.hero-faded .repo-rail--left {
-  transform: translateY(-50%) translateX(-1rem) scale(0.9);
+.exhibits-showcase .repo-tile {
+  width: 100px;
 }
-.repo-rail--right.repo-rail--hidden,
-.hero-faded .repo-rail--right {
-  transform: translateY(-50%) translateX(1rem) scale(0.9);
+.exhibits-showcase .repo-tile__ring {
+  width: 82px;
+  height: 82px;
 }
-.repo-rail--bottom.repo-rail--hidden,
-.hero-faded .repo-rail--bottom {
-  transform: translateX(-50%) translateY(1rem) scale(0.9);
+.exhibits-showcase .repo-tile__name {
+  font-size: 0.72rem;
+  max-width: 100px;
+  font-weight: 700;
+}
+
+/* ── Exhibits legend (domain key) ──────────────── */
+.exhibits-legend {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.exhibits-legend__label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.exhibits-legend__items {
+  display: flex;
+  gap: 0.25rem 0.65rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 0.68rem;
+  color: var(--ink-light);
 }
 
 .repo-tile {
@@ -695,9 +735,6 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   text-overflow: ellipsis;
   max-width: 90px;
 }
-
-/* Rails dim when detail is open */
-.repo-rail--peek { opacity: 0.15; pointer-events: none; }
 
 /* ── Expanded repo detail overlay ──────────────── */
 .repo-detail {
@@ -873,23 +910,42 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 }
 .repo-detail__link:hover { opacity: 1; }
 
-/* Repo rails: scale down on mid-size screens, hide on tablets/phones */
+/* Exhibits: responsive cascade */
 @media (max-width: 1440px) {
-  .repo-rail { gap: 0.4rem; }
-  .repo-rail--left { left: 1.5rem; }
-  .repo-rail--right { right: 1.5rem; }
-  .repo-tile { width: 70px; }
-  .repo-tile__ring { width: 56px; height: 56px; }
-  .repo-tile__name { font-size: 0.55rem; max-width: 70px; }
-  .repo-tile--hover { transform: scale(1.4); }
-  .repo-rail--bottom { gap: 0.8rem; }
-  .graph-howto { width: calc(100% - 180px); }
+  .exhibits-col .repo-tile { width: 70px; }
+  .exhibits-col .repo-tile__ring { width: 56px; height: 56px; }
+  .exhibits-col .repo-tile__name { font-size: 0.55rem; max-width: 70px; }
+  .exhibits-showcase .repo-tile { width: 85px; }
+  .exhibits-showcase .repo-tile__ring { width: 68px; height: 68px; }
+  .exhibits-showcase .repo-tile__name { font-size: 0.65rem; max-width: 85px; }
 }
+
+/* ≤1200px: sides collapse into a staggered ribbon across the top */
 @media (max-width: 1200px) {
-  .repo-rail--left, .repo-rail--right { display: none; }
-  .graph-howto { width: 85%; }
+  .exhibits-sides {
+    flex: 0 0 auto;
+    justify-content: center;
+    gap: 0.5rem 1.2rem;
+    padding: 0.75rem 1.5rem;
+  }
+  .exhibits-col {
+    flex-direction: row;
+    gap: 1rem;
+  }
+  /* Howto can widen — sides no longer flank */
+  .graph-howto { width: 75%; max-width: 420px; }
+  /* Gentle wave: odd tiles nudge up, even nudge down */
+  .exhibits-col .repo-tile:nth-child(odd) { transform: translateY(-0.35rem); }
+  .exhibits-col .repo-tile:nth-child(even) { transform: translateY(0.35rem); }
+  .exhibits-col .repo-tile--hover { transform: scale(1.4); }
+  .exhibits-col .repo-tile { width: 60px; }
+  .exhibits-col .repo-tile__ring { width: 48px; height: 48px; }
+  .exhibits-col .repo-tile__name { font-size: 0.5rem; max-width: 60px; }
+  .exhibits-showcase .repo-tile { width: 75px; }
+  .exhibits-showcase .repo-tile__ring { width: 60px; height: 60px; }
+  .exhibits-showcase .repo-tile__name { font-size: 0.6rem; max-width: 75px; }
 }
-@media (max-width: 1024px) { .repo-rail { display: none; } .repo-detail { display: none; } }
+@media (max-width: 1024px) { .exhibits-container { display: none; } .repo-detail { display: none; } }
 
 /* Chat panel */
 #chat-panel {
@@ -1193,9 +1249,12 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   position: absolute;
   top: 46%; left: 50%;
   transform: translate(-50%, -50%);
-  max-width: 420px;
-  width: calc(100% - 240px);
-  padding: 1.8rem 2rem;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  max-width: min(420px, calc(100% - 280px));
+  width: calc(100% - 280px);
+  padding: clamp(1rem, 2.5vw, 1.8rem) clamp(1.2rem, 3vw, 2rem);
   color: var(--ink-light);
   text-shadow: 0 1px 6px rgba(245, 240, 235, 0.8);
   transition: opacity 0.5s ease, transform 0.5s ease, width 0.5s ease;
@@ -1212,10 +1271,10 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .graph-howto__title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 1.5rem;
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
   font-weight: 600;
   color: var(--ink);
-  margin-bottom: 1.2rem;
+  margin-bottom: clamp(0.6rem, 1.5vw, 1.2rem);
   letter-spacing: 0.02em;
 }
 
@@ -1223,15 +1282,15 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   list-style: none;
   counter-reset: howto;
   padding: 0;
-  margin: 0 0 1.2rem;
+  margin: 0 0 clamp(0.6rem, 1.5vw, 1.2rem);
 }
 
 .graph-howto__steps li {
   counter-increment: howto;
   position: relative;
-  padding-left: 2rem;
-  margin-bottom: 0.9rem;
-  font-size: 1rem;
+  padding-left: clamp(1.4rem, 2.5vw, 2rem);
+  margin-bottom: clamp(0.5rem, 1.2vw, 0.9rem);
+  font-size: clamp(0.78rem, 1.5vw, 1rem);
   line-height: 1.55;
 }
 
@@ -1240,12 +1299,12 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   position: absolute;
   left: 0;
   top: 0.05em;
-  width: 1.4rem;
-  height: 1.4rem;
+  width: clamp(1.1rem, 1.8vw, 1.4rem);
+  height: clamp(1.1rem, 1.8vw, 1.4rem);
   border-radius: 50%;
   background: rgba(107, 76, 42, 0.12);
   color: var(--accent);
-  font-size: 0.82rem;
+  font-size: clamp(0.65rem, 1.1vw, 0.82rem);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -1258,7 +1317,7 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 }
 
 .graph-howto__hint {
-  font-size: 0.92rem;
+  font-size: clamp(0.72rem, 1.3vw, 0.92rem);
   color: var(--ink-faint);
   font-style: italic;
   line-height: 1.5;

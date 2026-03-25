@@ -346,35 +346,44 @@ function addLoading() {
 
 /* ── Starter questions ─────────────────────────────────────── */
 
-const REPOS = ['SPICE', 'C.R.A.C.K.', 'Flow-Ohana', 'Agent_Blackwell', 'PROVE', 'Architx', 'POI_Alchemist', 'A.U.R.A'];
-const randomRepo = REPOS[Math.floor(Math.random() * REPOS.length)];
-
-const STARTER_QUESTIONS = [
-  { label: 'How did Le build ' + randomRepo + '?', action: 'query', value: 'How did Le build ' + randomRepo + '?' },
-  { label: 'Strengths & weaknesses', action: 'query', value: "What are Le's strengths and weaknesses as an engineer?" },
-  { label: 'Analyze a job description', action: 'jd' },
-];
-
 let starterDiv = null;
 
 function showStarters() {
   starterDiv = document.createElement('div');
   starterDiv.className = 'starter-questions';
-  STARTER_QUESTIONS.forEach(sq => {
-    const btn = document.createElement('button');
-    btn.className = 'starter-btn';
-    btn.textContent = sq.label;
-    btn.addEventListener('click', () => {
-      dismissStarters();
-      if (sq.action === 'jd') {
-        openJdModal();
-      } else {
-        input.value = sq.value;
-        form.requestSubmit();
-      }
-    });
-    starterDiv.appendChild(btn);
-  });
+
+  const firstName = (window.__ENGINEER_NAME__ || 'Engineer').split(' ')[0];
+  const buildQ = (repo) => 'How did ' + firstName + ' build ' + repo + '?';
+
+  fetch('/api/repositories')
+    .then(r => r.ok ? r.json() : [])
+    .then(repos => {
+      const names = repos.map(r => r.name);
+      const pick = names.length ? names[Math.floor(Math.random() * names.length)] : 'PROVE';
+      const questions = [
+        { label: buildQ(pick), action: 'query', value: buildQ(pick) },
+        { label: 'Strengths & weaknesses', action: 'query', value: "What are " + firstName + "'s strengths and weaknesses as an engineer?" },
+        { label: 'Analyze a job description', action: 'jd' },
+      ];
+      if (!starterDiv) return;
+      questions.forEach(sq => {
+        const btn = document.createElement('button');
+        btn.className = 'starter-btn';
+        btn.textContent = sq.label;
+        btn.addEventListener('click', () => {
+          dismissStarters();
+          if (sq.action === 'jd') {
+            openJdModal();
+          } else {
+            input.value = sq.value;
+            form.requestSubmit();
+          }
+        });
+        starterDiv.appendChild(btn);
+      });
+    })
+    .catch(() => {});
+
   messages.appendChild(starterDiv);
 }
 
@@ -435,6 +444,8 @@ form.addEventListener('submit', e => {
     if (howto) howto.classList.add('graph-howto--hidden');
     const empty = document.querySelector('.graph-empty');
     if (empty) empty.style.display = '';
+    // Switch from exhibits to treemap
+    if (window.switchVizMode) window.switchVizMode('treemap');
   }
 
   addMessage('user', q);

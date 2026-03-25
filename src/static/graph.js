@@ -760,136 +760,6 @@ const TreemapRenderer = {
   }
 };
 
-/* ── Bar Chart Renderer ────────────────────────────────────── */
-
-const BarRenderer = {
-  _root: null,
-
-  init(svg, dims) {
-    this._root = svg.append('g').attr('class', 'bar-root');
-  },
-
-  render(state, dims) {
-    const g = this._root;
-    g.selectAll('*').remove();
-    if (state.empty) return;
-
-    const skills = getSkillList(state);
-    if (skills.length === 0) return;
-
-    const mobile = dims.width < 400;
-    const margin = mobile
-      ? { top: 10, right: 12, bottom: 10, left: 6 }
-      : { top: 16, right: 20, bottom: 16, left: 10 };
-    const w = dims.width - margin.left - margin.right;
-    const barH = Math.min(mobile ? 20 : 28, Math.max(mobile ? 14 : 18, (dims.height - margin.top - margin.bottom) / skills.length - (mobile ? 2 : 4)));
-    const gap = mobile ? 2 : 4;
-    const totalH = skills.length * (barH + gap);
-    const labelW = Math.min(mobile ? 100 : 140, w * 0.35);
-    const barW = w - labelW - 50; // reserve space for count label
-
-    const maxEv = Math.max(1, ...skills.map(s => s.evidence_count));
-    const x = d3.scaleLinear().domain([0, maxEv]).range([0, barW]);
-
-    const gInner = g.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-    skills.forEach((skill, i) => {
-      const y = i * (barH + gap);
-      const row = gInner.append('g')
-        .attr('class', 'bar-row')
-        .style('cursor', skill.status === 'demonstrated' ? 'pointer' : 'default');
-
-      // Invisible hit area — full row width for easy tapping on mobile
-      const hitArea = row.append('rect')
-        .attr('x', 0)
-        .attr('y', y)
-        .attr('width', w)
-        .attr('height', barH)
-        .style('fill', 'transparent')
-        .style('touch-action', 'none')
-        .on('mouseover', (evt) => {
-          showTooltip(evt, tipHtml(skill, skill.domain ? domainColor(skill.domain) : null));
-          row.select('.bar-fill').style('opacity', 1);
-        })
-        .on('mousemove', (evt) => { moveTooltip(evt); })
-        .on('mouseout', () => {
-          hideTooltip();
-          row.select('.bar-fill').style('opacity', 0.85);
-        })
-        .on('click', (evt) => {
-          evt.stopPropagation();
-          hideTooltip();
-          if (skill.status === 'demonstrated') openRefModal(skill.name);
-        });
-
-      // Touch support — SVG click events are unreliable on mobile touch devices
-      hitArea.node().addEventListener('touchend', (evt) => {
-        evt.preventDefault();
-        hideTooltip();
-        if (skill.status === 'demonstrated') openRefModal(skill.name);
-      }, { passive: false });
-
-      // Skill name label
-      row.append('text')
-        .attr('x', labelW - 6)
-        .attr('y', y + barH / 2 + 4)
-        .attr('text-anchor', 'end')
-        .style('font-size', mobile ? '0.6rem' : '0.75rem')
-        .style('fill', skill.status === 'gap' ? '#b05a4f' : skill.status === 'claimed_only' ? '#8a8380' : '#3d3d3d')
-        .style('pointer-events', 'none')
-        .text(() => {
-          const maxChars = Math.floor(labelW / 7);
-          return skill.name.length > maxChars ? skill.name.slice(0, maxChars - 1) + '…' : skill.name;
-        });
-
-      // Bar
-      const barX = labelW;
-      const barWidth = skill.evidence_count > 0 ? x(skill.evidence_count) : barW * 0.04;
-
-      row.append('rect')
-        .attr('class', 'bar-fill')
-        .attr('x', barX)
-        .attr('y', y)
-        .attr('width', 0)
-        .attr('height', barH)
-        .attr('rx', 3)
-        .style('fill', skill.status === 'demonstrated' ? domainColor(skill.domain) : statusColor(skill.status))
-        .style('stroke', skill.status === 'gap' ? '#c4756a' : skill.status === 'claimed_only' ? '#b0a898' : 'none')
-        .style('stroke-width', skill.status !== 'demonstrated' ? 1 : 0)
-        .style('stroke-dasharray', skill.status === 'gap' ? '3 2' : 'none')
-        .style('opacity', 0.85)
-        .style('pointer-events', 'none')
-        .transition().duration(500).delay(i * 60).ease(d3.easeCubicOut)
-        .attr('width', barWidth);
-
-      // Evidence count
-      if (skill.evidence_count > 0) {
-        row.append('text')
-          .attr('x', barX + barWidth + 6)
-          .attr('y', y + barH / 2 + 4)
-          .style('font-size', '0.68rem')
-          .style('fill', '#8a8380')
-          .style('opacity', 0)
-          .text(skill.evidence_count)
-          .transition().duration(400).delay(i * 60 + 300)
-          .style('opacity', 1);
-      }
-    });
-
-    // Always size the viewBox to fit content
-    const neededH = totalH + margin.top + margin.bottom;
-    svg.attr('viewBox', `0 0 ${dims.width} ${neededH}`);
-    if (mobile) {
-      document.getElementById('graph-container').style.height = neededH + 'px';
-    }
-  },
-
-  destroy() {
-    if (this._root) this._root.remove();
-    this._root = null;
-  }
-};
-
 /* ── Legend ──────────────────────────────────────────────────── */
 
 const LEGENDS = {
@@ -899,18 +769,33 @@ const LEGENDS = {
     <span><i class="dot" style="background:#c4756a"></i> Gap</span>
     <span class="legend-note">Tile size = evidence count</span>
   `,
-  bars: `
-    <span><i class="dot" style="background:#5a7a4f"></i> Demonstrated</span>
-    <span><i class="dot" style="background:#9e9890"></i> Claimed</span>
-    <span><i class="dot" style="background:#c4756a"></i> Gap</span>
-    <span class="legend-note">Bar length = evidence count</span>
-  `,
+  exhibits: null, // built dynamically by repo-tiles.js
 };
 
 function updateLegend(mode) {
   const el = document.getElementById('viz-legend');
-  if (el) el.innerHTML = LEGENDS[mode] || '';
+  if (!el) return;
+  const content = LEGENDS[mode];
+  if (content === null) return; // managed externally
+  el.innerHTML = content || '';
 }
+
+// Called by repo-tiles.js after domains are registered
+window.buildExhibitsLegend = function () {
+  const el = document.getElementById('viz-legend');
+  if (!el || activeMode !== 'exhibits') return;
+  const entries = Object.entries(DOMAIN_HUES);
+  if (!entries.length) return;
+  let items = '';
+  for (const [name, color] of entries) {
+    items += `<span><i class="dot" style="background:${color}"></i>${name}</span>`;
+  }
+  el.innerHTML =
+    '<div class="exhibits-legend">' +
+      '<span class="exhibits-legend__label">Skill Domains</span>' +
+      '<div class="exhibits-legend__items">' + items + '</div>' +
+    '</div>';
+};
 
 /* ── Domain Filter ─────────────────────────────────────────── */
 
@@ -969,9 +854,9 @@ function getViewState() {
 
 /* ── Orchestrator ───────────────────────────────────────────── */
 
-const renderers = { treemap: TreemapRenderer, bars: BarRenderer };
+const renderers = { treemap: TreemapRenderer };
 const isMobile = window.innerWidth < 768;
-let activeMode = isMobile ? 'bars' : 'treemap';
+let activeMode = isMobile ? 'chat' : 'exhibits';
 const state = new GraphState();
 let svg = null;
 let dims = { width: 400, height: 400 };
@@ -1053,25 +938,42 @@ function switchMode(mode) {
   // Leaving chat view — restore DOM
   if (isMobile) hideMobileChat();
 
-  if (mode !== activeMode || !renderers[mode]._root) {
-    renderers[activeMode].destroy();
+  const exhibitsEl = document.getElementById('exhibits-container');
+  const graphEl = document.getElementById('graph-container');
+  const filterEl = document.getElementById('graph-filter');
+
+  if (mode === 'exhibits') {
+    if (exhibitsEl) exhibitsEl.classList.remove('exhibits-container--hidden');
+    if (graphEl) graphEl.style.display = 'none';
+    if (filterEl) filterEl.style.display = 'none';
     activeMode = mode;
-    renderers[mode].init(svg, dims);
+    syncToggle(mode);
+    if (window.buildExhibitsLegend) window.buildExhibitsLegend();
+    return;
+  }
+
+  // Treemap (or any renderer mode)
+  if (exhibitsEl) exhibitsEl.classList.add('exhibits-container--hidden');
+  if (graphEl) graphEl.style.display = '';
+
+  if (mode !== activeMode || !renderers[mode] || !renderers[mode]._root) {
+    if (renderers[activeMode]) renderers[activeMode].destroy();
+    activeMode = mode;
+    if (renderers[mode]) renderers[mode].init(svg, dims);
   }
   syncToggle(mode);
   updateLegend(mode);
   measureDims();
-  if (!state.empty) renderers[mode].render(getViewState(), dims);
+  if (!state.empty && renderers[mode]) renderers[mode].render(getViewState(), dims);
 }
 
 function renderCurrent() {
-  if (!svg) return;
+  if (!svg || !renderers[activeMode]) return;
   measureDims();
   const viewState = getViewState();
   const r = renderers[activeMode];
   if (!r._root) r.init(svg, dims);
   r.render(viewState, dims);
-
 }
 
 document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
@@ -1086,16 +988,25 @@ new ResizeObserver(() => {
 initSVG();
 syncToggle(isMobile ? 'chat' : activeMode);
 updateLegend(activeMode);
-renderers[activeMode].init(svg, dims);
+// On desktop, start in exhibits mode — hide graph-container, show exhibits
+if (!isMobile) {
+  document.getElementById('graph-container').style.display = 'none';
+  document.getElementById('graph-filter').style.display = 'none';
+}
 
 /* ── Public API ─────────────────────────────────────────────── */
 
 window.updateGraph = function (data) {
+  const wasEmpty = state.empty;
   state.update(data);
   const empty = document.querySelector('.graph-empty');
   if (empty && !state.empty) empty.style.display = 'none';
   const howto = document.getElementById('graph-howto');
   if (howto && !state.empty) howto.classList.add('graph-howto--hidden');
+  // Auto-switch to treemap on first graph data
+  if (wasEmpty && !state.empty && activeMode === 'exhibits') {
+    switchMode('treemap');
+  }
   updateFilterBar();
   renderCurrent();
 };

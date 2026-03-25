@@ -1,11 +1,13 @@
 /* ── Repo Tiles — interactive donut rings ─────────────── */
 
 (function () {
-  const LEFT = document.getElementById('repo-rail-left');
-  const RIGHT = document.getElementById('repo-rail-right');
-  const BOTTOM = document.getElementById('repo-rail-bottom');
+  const LEFT = document.getElementById('exhibits-left');
+  const RIGHT = document.getElementById('exhibits-right');
+  const SHOWCASE = document.getElementById('exhibits-showcase');
   const DETAIL = document.getElementById('repo-detail');
-  if (!LEFT || !RIGHT || !BOTTOM || !DETAIL) return;
+  if (!LEFT || !RIGHT || !SHOWCASE || !DETAIL) return;
+
+  const SHOWCASE_NAMES = ['PROVE', 'C.R.A.C.K.', 'PANEL', 'SPICE'];
 
   const SIZE = 72;
   const OUTER = SIZE / 2 - 2;
@@ -20,6 +22,10 @@
   const expArc = d3.arc().innerRadius(EXP_INNER).outerRadius(EXP_OUTER);
 
   let expanded = null;
+
+  function allTiles() {
+    return document.querySelectorAll('.exhibits-container .repo-tile');
+  }
 
   /* ── Render a single tile ──────────────────────── */
 
@@ -63,7 +69,7 @@
     tile.addEventListener('mouseenter', () => {
       if (expanded) return;
       tile.classList.add('repo-tile--hover');
-      document.querySelectorAll('.repo-tile').forEach(t => {
+      allTiles().forEach(t => {
         if (t !== tile) t.classList.add('repo-tile--dimmed');
       });
       explodeSegments(tile, true);
@@ -101,12 +107,10 @@
 
   function expandRepo(repo) {
     expanded = repo.name;
-    [LEFT, RIGHT, BOTTOM].forEach(r => r.classList.add('repo-rail--peek'));
 
     DETAIL.innerHTML = '';
     DETAIL.classList.add('repo-detail--visible');
 
-    // Large donut
     const data = repo.domains.map(d => ({
       name: d.domain, value: d.snippets || d.skill_count || 1
     }));
@@ -128,13 +132,11 @@
       DETAIL.appendChild(svg);
     }
 
-    // Title
     const title = document.createElement('h3');
     title.className = 'repo-detail__title';
     title.textContent = repo.name;
     DETAIL.appendChild(title);
 
-    // Breakdown placeholder
     const body = document.createElement('div');
     body.className = 'repo-detail__body';
     body.innerHTML = '<p class="repo-detail__loading">Loading…</p>';
@@ -152,7 +154,6 @@
     container.innerHTML = '';
     const bd = detail.breakdown || {};
 
-    // Project breakdown
     if (bd.tagline || bd.summary) {
       const section = document.createElement('div');
       section.className = 'repo-detail__breakdown';
@@ -183,7 +184,6 @@
       container.appendChild(section);
     }
 
-    // Domain accordions
     for (const [domain, skills] of Object.entries(detail.domains)) {
       const group = document.createElement('details');
       group.className = 'repo-detail__accordion';
@@ -241,7 +241,6 @@
     if (!expanded) return;
     expanded = null;
     DETAIL.classList.remove('repo-detail--visible');
-    [LEFT, RIGHT, BOTTOM].forEach(r => r.classList.remove('repo-rail--peek'));
     document.querySelectorAll('.repo-tile--dimmed').forEach(t =>
       t.classList.remove('repo-tile--dimmed')
     );
@@ -262,20 +261,31 @@
   fetch('/api/repositories')
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(repos => {
-      repos.forEach((repo, i) => {
+      const showcaseSet = new Set(SHOWCASE_NAMES);
+      const showcase = [];
+      const side = [];
+
+      for (const repo of repos) {
+        if (showcaseSet.has(repo.name)) showcase.push(repo);
+        else side.push(repo);
+      }
+
+      // Sort showcase to match declared order
+      showcase.sort((a, b) => SHOWCASE_NAMES.indexOf(a.name) - SHOWCASE_NAMES.indexOf(b.name));
+
+      // Distribute side tiles: alternate left/right
+      side.forEach((repo, i) => {
         const tile = renderTile(repo);
-        if (i < 3) LEFT.appendChild(tile);
-        else if (i < 6) RIGHT.appendChild(tile);
-        else BOTTOM.appendChild(tile);
+        (i % 2 === 0 ? LEFT : RIGHT).appendChild(tile);
       });
+
+      // Showcase tiles into bottom row
+      for (const repo of showcase) {
+        SHOWCASE.appendChild(renderTile(repo));
+      }
+
+      // Build domain legend now that all domainColor() calls have fired
+      if (window.buildExhibitsLegend) window.buildExhibitsLegend();
     })
     .catch(() => {});
-
-  const rails = [LEFT, RIGHT, BOTTOM];
-  new MutationObserver(() => {
-    if (document.body.classList.contains('hero-faded')) {
-      closeDetail();
-      rails.forEach(r => r.classList.add('repo-rail--hidden'));
-    }
-  }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 })();

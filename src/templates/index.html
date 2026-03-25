@@ -142,12 +142,16 @@
       <div class="viz-toggle" role="tablist" aria-label="Visualization type">
         <button class="viz-toggle__btn viz-toggle__btn--mobile-only" data-mode="chat">Chat</button>
         <button class="viz-toggle__btn" data-mode="treemap">Treemap</button>
-        <button class="viz-toggle__btn" data-mode="bars">Bars</button>
+        <button class="viz-toggle__btn" data-mode="exhibits">Exhibits</button>
       </div>
       <div class="graph-filter" id="graph-filter"></div>
-      <div class="repo-rail repo-rail--left" id="repo-rail-left"></div>
-      <div class="repo-rail repo-rail--right" id="repo-rail-right"></div>
-      <div class="repo-rail repo-rail--bottom" id="repo-rail-bottom"></div>
+      <div class="exhibits-container" id="exhibits-container">
+        <div class="exhibits-sides">
+          <div class="exhibits-col" id="exhibits-left"></div>
+          <div class="exhibits-col" id="exhibits-right"></div>
+        </div>
+        <div class="exhibits-showcase" id="exhibits-showcase"></div>
+      </div>
       <div class="repo-detail" id="repo-detail"></div>
       <div id="graph-container"></div>
       <p class="graph-empty" style="display:none">Graph builds as you chat…</p>
@@ -167,7 +171,7 @@
 
   <footer class="site-credit" role="contentinfo">Made with <span class="site-credit__heart" aria-hidden="true">🖤</span> by <a href="https://github.com/codeblackwell" target="_blank" rel="noopener noreferrer">@CodeBlackwell</a></footer>
 
-  <script>window.__GITHUB_OWNER__ = "{{ github_owner }}";</script>
+  <script>window.__GITHUB_OWNER__ = "{{ github_owner }}";window.__ENGINEER_NAME__ = "{{ name }}";</script>
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
