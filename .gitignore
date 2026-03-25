@@ -10,6 +10,7 @@ repos/
 dump/
 ralph.py
 ralph_timing.log
+scripts/sync-to-prod.py
 
 # Terraform
 infra/terraform.tfstate*
