@@ -1,15 +1,11 @@
 /* ── Repo Tiles — interactive donut rings ─────────────── */
 
 (function () {
-  const LEFT = document.getElementById('exhibits-left');
-  const RIGHT = document.getElementById('exhibits-right');
-  const SHOWCASE = document.getElementById('exhibits-showcase');
+  const CAROUSEL = document.getElementById('exhibits-carousel');
   const DETAIL = document.getElementById('repo-detail');
   const STRIP = document.getElementById('hero-exhibits');
-  const hasDesktop = LEFT && RIGHT && SHOWCASE && DETAIL;
+  const hasDesktop = CAROUSEL && DETAIL;
   if (!STRIP && !hasDesktop) return;
-
-  const SHOWCASE_NAMES = ['PROVE', 'C.R.A.C.K.', 'PANEL', 'SPICE', 'veridatum'];
   const snippetCache = new Map();
 
   const SIZE = 84;
@@ -379,7 +375,7 @@
       if (!data.length) continue;
       const tile = document.createElement('div');
       tile.className = 'hero-strip__tile';
-      tile.appendChild(renderMiniRing(data, 56));
+      tile.appendChild(renderMiniRing(data, 50));
       const name = document.createElement('div');
       name.className = 'hero-strip__name';
       name.textContent = repo.display_name || repo.name;
@@ -453,27 +449,8 @@
       if (STRIP) initMobileStrip(repos);
       if (!hasDesktop) return;
 
-      const showcaseSet = new Set(SHOWCASE_NAMES);
-      const showcase = [];
-      const side = [];
-
       for (const repo of repos) {
-        if (showcaseSet.has(repo.name)) showcase.push(repo);
-        else side.push(repo);
-      }
-
-      // Sort showcase to match declared order
-      showcase.sort((a, b) => SHOWCASE_NAMES.indexOf(a.name) - SHOWCASE_NAMES.indexOf(b.name));
-
-      // Distribute side tiles: alternate left/right
-      side.forEach((repo, i) => {
-        const tile = renderTile(repo);
-        (i % 2 === 0 ? LEFT : RIGHT).appendChild(tile);
-      });
-
-      // Showcase tiles into bottom row
-      for (const repo of showcase) {
-        SHOWCASE.appendChild(renderTile(repo));
+        CAROUSEL.appendChild(renderTile(repo));
       }
 
       // Build domain legend now that all domainColor() calls have fired
