@@ -118,6 +118,7 @@
         <p class="hero__intro">I learn through observation, hypothesis, building, breaking, refinement.. and play. Pulling things apart, tracing the edges, enjoying the maze each problem is, then writing the code that answers the question. Every project here began as curiosity that wouldn't settle for a tutorial. This portfolio works the same way: an AI agent that reasons over my actual code, connects skills to evidence, and shows its work. Ask it anything and watch it think.</p>
         <p class="hero__prove">This is <strong>P.R.O.V.E.</strong> — Portfolio Reasoning Over Verified Evidence.</p>
       </header>
+      <div class="hero-strip" id="hero-exhibits"></div>
 
       <section id="chat-panel" aria-label="Chat with AI assistant">
         <div id="messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
@@ -183,7 +184,7 @@
   <script>
     (function() {
       const bg = new Image();
-      bg.src = '{{ cdn_base }}/static/background.webp';
+      bg.src = '{{ cdn_base }}/static/background.svg';
       bg.onload = bg.onerror = function() {
         document.body.classList.remove('is-loading');
         document.body.classList.add('is-reveal');

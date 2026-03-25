@@ -5,7 +5,9 @@
   const RIGHT = document.getElementById('exhibits-right');
   const SHOWCASE = document.getElementById('exhibits-showcase');
   const DETAIL = document.getElementById('repo-detail');
-  if (!LEFT || !RIGHT || !SHOWCASE || !DETAIL) return;
+  const STRIP = document.getElementById('hero-exhibits');
+  const hasDesktop = LEFT && RIGHT && SHOWCASE && DETAIL;
+  if (!STRIP && !hasDesktop) return;
 
   const SHOWCASE_NAMES = ['PROVE', 'C.R.A.C.K.', 'PANEL', 'SPICE', 'veridatum'];
   const snippetCache = new Map();
@@ -23,6 +25,7 @@
   const expArc = d3.arc().innerRadius(EXP_INNER).outerRadius(EXP_OUTER);
 
   let expanded = null;
+  let activeRequest = 0;
 
   function allTiles() {
     return document.querySelectorAll('.exhibits-container .repo-tile');
@@ -141,10 +144,11 @@
     body.innerHTML = '<p class="repo-detail__loading">Loading…</p>';
     DETAIL.appendChild(body);
 
+    const reqId = ++activeRequest;
     fetch(`/api/repositories/${encodeURIComponent(repo.name)}`)
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(detail => renderDetail(body, detail))
-      .catch(() => { body.innerHTML = '<p class="repo-detail__loading">Could not load details</p>'; });
+      .then(detail => { if (reqId === activeRequest) renderDetail(body, detail); })
+      .catch(() => { if (reqId === activeRequest) body.innerHTML = '<p class="repo-detail__loading">Could not load details</p>'; });
   }
 
   /* ── Render breakdown + accordion skill list ─── */
@@ -263,27 +267,26 @@
 
   function renderSnippets(snippets, repoName, container) {
     container.innerHTML = '';
-    var owner = window.__GITHUB_OWNER__ || 'codeblackwell';
-    var LANGS = { py: 'Python', js: 'JavaScript', ts: 'TypeScript', tsx: 'TypeScript', jsx: 'JavaScript', java: 'Java', go: 'Go', rs: 'Rust' };
-    for (var s of snippets) {
-      var div = document.createElement('div');
+    const LANGS = { py: 'Python', js: 'JavaScript', ts: 'TypeScript', tsx: 'TypeScript', jsx: 'JavaScript', java: 'Java', go: 'Go', rs: 'Rust' };
+    for (const s of snippets) {
+      const div = document.createElement('div');
       div.className = 'repo-detail__snippet';
 
-      var fileLine = document.createElement('div');
+      const fileLine = document.createElement('div');
       fileLine.className = 'repo-detail__snippet-file';
-      var a = document.createElement('a');
+      const a = document.createElement('a');
       a.href = s.url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       a.className = 'repo-detail__link';
       a.textContent = s.path;
       fileLine.appendChild(a);
-      var range = document.createElement('span');
+      const range = document.createElement('span');
       range.className = 'repo-detail__snippet-range';
       range.textContent = s.end_line > s.start_line ? 'L' + s.start_line + '–' + s.end_line : 'L' + s.start_line;
       fileLine.appendChild(range);
       if (s.language && LANGS[s.language]) {
-        var lang = document.createElement('span');
+        const lang = document.createElement('span');
         lang.className = 'repo-detail__snippet-lang';
         lang.textContent = LANGS[s.language];
         fileLine.appendChild(lang);
@@ -291,17 +294,17 @@
       div.appendChild(fileLine);
 
       if (s.context) {
-        var ctx = document.createElement('p');
+        const ctx = document.createElement('p');
         ctx.className = 'repo-detail__snippet-context';
         ctx.textContent = s.context;
         div.appendChild(ctx);
       }
 
       if (s.content) {
-        var escaped = s.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        var lines = s.content.split('\n').length;
-        var langCls = s.language ? ' class="language-' + s.language + '"' : '';
-        var code = document.createElement('details');
+        const escaped = s.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const lines = s.content.split('\n').length;
+        const langCls = s.language ? ' class="language-' + s.language + '"' : '';
+        const code = document.createElement('details');
         code.className = 'repo-detail__snippet-code';
         code.innerHTML = '<summary><span class="repo-detail__snippet-arrow">▸</span> ' + lines + ' line' + (lines !== 1 ? 's' : '') + '</summary>' +
           '<pre class="repo-detail__snippet-pre"><code' + langCls + '>' + escaped + '</code></pre>';
@@ -311,7 +314,7 @@
         });
         div.appendChild(code);
       } else if (s.private) {
-        var redacted = document.createElement('span');
+        const redacted = document.createElement('span');
         redacted.className = 'repo-detail__snippet-redacted';
         redacted.textContent = 'PRIVATE — CODE REDACTED';
         div.appendChild(redacted);
@@ -325,7 +328,7 @@
 
   function closeDetail() {
     if (!expanded) return;
-    const container = DETAIL.closest('.exhibits-container');
+    const container = document.querySelector('.exhibits-container');
     if (container) container.classList.remove('repo-tiles--has-hover');
     allTiles().forEach(t => {
       t.classList.remove('repo-tile--hover');
@@ -335,21 +338,121 @@
     DETAIL.classList.remove('repo-detail--visible');
   }
 
-  document.getElementById('graph-panel').addEventListener('click', (e) => {
+  const graphPanel = document.getElementById('graph-panel');
+  if (graphPanel) graphPanel.addEventListener('click', (e) => {
     if (!expanded) return;
-    if (DETAIL.contains(e.target) || e.target.closest('.repo-tile')) return;
+    if (DETAIL && DETAIL.contains(e.target) || e.target.closest('.repo-tile')) return;
     closeDetail();
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeDetail();
+    if (e.key === 'Escape') { closeDetail(); closeSheet(); }
   });
+
+  /* ── Mobile strip: mini ring renderer ──────── */
+
+  function renderMiniRing(data, size) {
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.setAttribute('class', 'hero-strip__ring');
+    const g = document.createElementNS(svgNS, 'g');
+    g.setAttribute('transform', `translate(${size / 2},${size / 2})`);
+    const r = size / 2 - 4;
+    const miniArc = d3.arc().innerRadius(r - size * 0.13).outerRadius(r);
+    for (const slice of pie(data)) {
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', miniArc(slice));
+      path.setAttribute('fill', window.domainColor ? window.domainColor(slice.data.name) : '#5a7a4f');
+      path.setAttribute('opacity', '0.85');
+      g.appendChild(path);
+    }
+    svg.appendChild(g);
+    return svg;
+  }
+
+  /* ── Mobile strip: init tiles ──────────────── */
+
+  function initMobileStrip(repos) {
+    for (const repo of repos) {
+      const data = repo.domains.map(d => ({ name: d.domain, value: d.snippets || d.skill_count || 1 }));
+      if (!data.length) continue;
+      const tile = document.createElement('div');
+      tile.className = 'hero-strip__tile';
+      tile.appendChild(renderMiniRing(data, 56));
+      const name = document.createElement('div');
+      name.className = 'hero-strip__name';
+      name.textContent = repo.display_name || repo.name;
+      tile.appendChild(name);
+      tile.addEventListener('click', () => openSheet(repo));
+      STRIP.appendChild(tile);
+    }
+  }
+
+  /* ── Bottom sheet ──────────────────────────── */
+
+  let sheetEl = null;
+  let sheetBody = null;
+  let dragStartY = 0;
+
+  function ensureSheet() {
+    if (sheetEl) return;
+    sheetEl = document.createElement('div');
+    sheetEl.className = 'repo-sheet';
+    sheetEl.innerHTML = '<div class="repo-sheet__backdrop"></div>' +
+      '<div class="repo-sheet__panel">' +
+        '<div class="repo-sheet__handle"></div>' +
+        '<div class="repo-sheet__header"></div>' +
+        '<div class="repo-sheet__body"></div>' +
+      '</div>';
+    document.body.appendChild(sheetEl);
+    sheetBody = sheetEl.querySelector('.repo-sheet__body');
+    sheetEl.querySelector('.repo-sheet__backdrop').addEventListener('click', closeSheet);
+    const panel = sheetEl.querySelector('.repo-sheet__panel');
+    panel.addEventListener('touchstart', (e) => { dragStartY = e.touches[0].clientY; }, { passive: true });
+    panel.addEventListener('touchend', (e) => {
+      if (e.changedTouches[0].clientY - dragStartY > 80) closeSheet();
+    });
+  }
+
+  function openSheet(repo) {
+    ensureSheet();
+    const header = sheetEl.querySelector('.repo-sheet__header');
+    header.innerHTML = '';
+    const data = repo.domains.map(d => ({ name: d.domain, value: d.snippets || d.skill_count || 1 }));
+    if (data.length) {
+      const ring = renderMiniRing(data, 120);
+      ring.removeAttribute('class');
+      ring.style.width = '120px';
+      ring.style.height = '120px';
+      ring.style.flexShrink = '0';
+      header.appendChild(ring);
+    }
+    const title = document.createElement('h3');
+    title.className = 'repo-sheet__title';
+    title.textContent = repo.display_name || repo.name;
+    header.appendChild(title);
+    sheetBody.innerHTML = '<p class="repo-detail__loading">Loading…</p>';
+    sheetEl.classList.add('repo-sheet--open');
+    const reqId = ++activeRequest;
+    fetch(`/api/repositories/${encodeURIComponent(repo.name)}`)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(detail => { if (reqId === activeRequest) renderDetail(sheetBody, detail); })
+      .catch(() => { if (reqId === activeRequest) sheetBody.innerHTML = '<p class="repo-detail__loading">Could not load details</p>'; });
+  }
+
+  function closeSheet() {
+    if (sheetEl) sheetEl.classList.remove('repo-sheet--open');
+  }
 
   /* ── Init: fetch and distribute tiles ──────────── */
 
   fetch('/api/repositories')
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(repos => {
+      if (STRIP) initMobileStrip(repos);
+      if (!hasDesktop) return;
+
       const showcaseSet = new Set(SHOWCASE_NAMES);
       const showcase = [];
       const side = [];
