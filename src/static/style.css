@@ -615,45 +615,55 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   }
 }
 
-/* ── Repo tile rail (inside #graph-panel) ───── */
+/* ── Repo tile rails (inside #graph-panel) ───── */
 .repo-rail {
   position: absolute;
-  display: none;
-  z-index: 6;
-}
-/* Only the bottom rail is used — single centered row */
-.repo-rail--bottom {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.6rem;
-  bottom: 2.8rem;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 6;
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.repo-rail--left  { left: 0.25rem; top: 45%; transform: translateY(-50%); }
+.repo-rail--right { right: 0.25rem; top: 45%; transform: translateY(-50%); }
+.repo-rail--bottom {
+  flex-direction: row;
+  bottom: 3rem;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
-  max-width: 600px;
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  gap: 1rem;
 }
 
 .repo-rail--hidden,
 .hero-faded .repo-rail {
   opacity: 0;
   pointer-events: none;
-  transform: translateX(-50%) translateY(0.5rem) scale(0.95);
+}
+.repo-rail--left.repo-rail--hidden,
+.hero-faded .repo-rail--left {
+  transform: translateY(-50%) translateX(-1rem) scale(0.9);
+}
+.repo-rail--right.repo-rail--hidden,
+.hero-faded .repo-rail--right {
+  transform: translateY(-50%) translateX(1rem) scale(0.9);
+}
+.repo-rail--bottom.repo-rail--hidden,
+.hero-faded .repo-rail--bottom {
+  transform: translateX(-50%) translateY(1rem) scale(0.9);
 }
 
 .repo-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 48px;
+  width: 56px;
   cursor: pointer;
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
               opacity 0.3s ease, filter 0.3s ease;
 }
 
 .repo-tile--hover {
-  transform: scale(1.6);
+  transform: scale(1.5);
   z-index: 10;
 }
 
@@ -664,8 +674,8 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .repo-tile__ring {
   display: block;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   transition: filter 0.3s ease;
 }
 
@@ -675,15 +685,15 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .repo-tile__name {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 0.55rem;
+  font-size: 0.58rem;
   font-weight: 600;
   color: var(--ink-light);
-  margin-top: 0.1rem;
+  margin-top: 0.15rem;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 48px;
+  max-width: 56px;
   opacity: 0;
   transition: opacity 0.25s ease;
 }
@@ -869,15 +879,21 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 }
 .repo-detail__link:hover { opacity: 1; }
 
-/* Repo rails: shrink on mid-size, hide on tablets/phones */
+/* Repo rails: scale down on mid-size screens, hide on tablets/phones */
 @media (max-width: 1440px) {
-  .repo-rail--bottom { gap: 0.4rem; }
-  .repo-tile { width: 40px; }
-  .repo-tile__ring { width: 36px; height: 36px; }
-  .repo-tile__name { font-size: 0.48rem; max-width: 40px; }
-  .repo-tile--hover { transform: scale(1.5); }
+  .repo-rail { gap: 0.35rem; }
+  .repo-tile { width: 44px; }
+  .repo-tile__ring { width: 38px; height: 38px; }
+  .repo-tile__name { font-size: 0.5rem; max-width: 44px; }
+  .repo-tile--hover { transform: scale(1.4); }
+  .repo-rail--bottom { gap: 0.6rem; }
+  .graph-howto { width: calc(100% - 130px); }
 }
-@media (max-width: 1024px) { .repo-rail { display: none !important; } .repo-detail { display: none; } }
+@media (max-width: 1200px) {
+  .repo-rail--left, .repo-rail--right { display: none; }
+  .graph-howto { width: 85%; top: 45%; }
+}
+@media (max-width: 1024px) { .repo-rail { display: none; } .repo-detail { display: none; } }
 
 /* Chat panel */
 #chat-panel {
@@ -1179,14 +1195,19 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 /* ── Graph how-to overlay ────────────────────── */
 .graph-howto {
   position: absolute;
-  top: 50%; left: 50%;
+  top: 45%; left: 50%;
   transform: translate(-50%, -50%);
   max-width: 420px;
-  width: 85%;
+  width: calc(100% - 200px);
   padding: 2rem 2.2rem;
   color: var(--ink-light);
   text-shadow: 0 1px 6px rgba(245, 240, 235, 0.8);
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transition: opacity 0.5s ease, transform 0.5s ease, width 0.5s ease, top 0.5s ease;
+}
+/* Restore full width after rails fade */
+.hero-faded .graph-howto {
+  width: 85%;
+  top: 50%;
 }
 
 .graph-howto--hidden {
