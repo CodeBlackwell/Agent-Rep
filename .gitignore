@@ -20,7 +20,6 @@ src/static/*.min.css.br
 src/static/*.min.css.gz
 src/static/d3.custom.min.js.br
 src/static/d3.custom.min.js.gz
-src/static/background.webp
 src/static/background.webp.br
 src/static/background.webp.gz
 package-lock.json
