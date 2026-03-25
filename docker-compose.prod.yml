@@ -1,13 +1,14 @@
 services:
   app:
     build: .
+    container_name: prove-app
     restart: unless-stopped
     env_file: .env
     environment:
       NEO4J_URI: bolt://neo4j:7687
     volumes:
-      - app_data:/app/data      # SQLite DB (conversations, logs, rate limits)
-      - app_logs:/app/logs      # JSON line logs
+      - app_data:/app/data
+      - app_logs:/app/logs
     depends_on:
       neo4j:
         condition: service_healthy
@@ -33,30 +34,13 @@ services:
     networks:
       - internal
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./src/static:/srv/app/static:ro
-      - ./portfolio:/srv/portfolio:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - app
-    networks:
-      - web
-
 volumes:
   neo4j_data:
   app_data:
   app_logs:
-  caddy_data:
-  caddy_config:
 
 networks:
-  internal:    # neo4j <-> app only, no external access
-  web:         # app <-> caddy, exposed to internet
+  internal:
+  web:
+    external: true
+    name: web
