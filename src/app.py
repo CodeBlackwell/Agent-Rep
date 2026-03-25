@@ -1,11 +1,14 @@
 import json
 import hashlib
+import mimetypes
 import os
 import time
 import uuid
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
+
+mimetypes.add_type("image/webp", ".webp")
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
