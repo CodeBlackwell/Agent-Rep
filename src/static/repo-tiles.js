@@ -70,18 +70,16 @@
     tile.addEventListener('mouseenter', () => {
       if (expanded) return;
       tile.classList.add('repo-tile--hover');
-      allTiles().forEach(t => {
-        if (t !== tile) t.classList.add('repo-tile--dimmed');
-      });
+      const container = tile.closest('.exhibits-container');
+      if (container) container.classList.add('repo-tiles--has-hover');
       explodeSegments(tile, true);
     });
 
     tile.addEventListener('mouseleave', () => {
       if (expanded) return;
       tile.classList.remove('repo-tile--hover');
-      document.querySelectorAll('.repo-tile--dimmed').forEach(t =>
-        t.classList.remove('repo-tile--dimmed')
-      );
+      const container = tile.closest('.exhibits-container');
+      if (container) container.classList.remove('repo-tiles--has-hover');
       explodeSegments(tile, false);
     });
 
@@ -327,8 +325,10 @@
 
   function closeDetail() {
     if (!expanded) return;
+    const container = DETAIL.closest('.exhibits-container');
+    if (container) container.classList.remove('repo-tiles--has-hover');
     allTiles().forEach(t => {
-      t.classList.remove('repo-tile--hover', 'repo-tile--dimmed');
+      t.classList.remove('repo-tile--hover');
       explodeSegments(t, false);
     });
     expanded = null;

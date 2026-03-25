@@ -288,6 +288,9 @@ function repoShade(baseHex, repoName) {
 /* ── Tooltip ────────────────────────────────────────────────── */
 
 let tooltip;
+let _ttW = 280, _ttH = 100;
+let _ttRaf = null;
+
 function ensureTooltip() {
   if (!tooltip) {
     tooltip = document.createElement('div');
@@ -299,20 +302,14 @@ function ensureTooltip() {
 
 function _positionTooltip(evt) {
   const tt = ensureTooltip();
-  const ttW = tt.offsetWidth || 280;
-  const ttH = tt.offsetHeight || 100;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  // Default: right of cursor, above cursor
   let x = evt.clientX + 14;
-  let y = evt.clientY - ttH - 10;
-  // Flip right → left if overflowing right
-  if (x + ttW > vw - 8) x = evt.clientX - ttW - 10;
-  // Flip above → below if overflowing top
+  let y = evt.clientY - _ttH - 10;
+  if (x + _ttW > vw - 8) x = evt.clientX - _ttW - 10;
   if (y < 4) y = evt.clientY + 18;
-  // Final clamp
   if (x < 4) x = 4;
-  if (y + ttH > vh - 4) y = vh - ttH - 4;
+  if (y + _ttH > vh - 4) y = vh - _ttH - 4;
   if (y < 4) y = 4;
   tt.style.transform = `translate(${x}px, ${y}px)`;
 }
@@ -321,14 +318,21 @@ function showTooltip(evt, html) {
   const tt = ensureTooltip();
   tt.innerHTML = html;
   tt.classList.add('viz-tooltip--visible');
+  _ttW = tt.offsetWidth || 280;
+  _ttH = tt.offsetHeight || 100;
   _positionTooltip(evt);
 }
 
 function moveTooltip(evt) {
-  _positionTooltip(evt);
+  if (_ttRaf) return;
+  _ttRaf = requestAnimationFrame(() => {
+    _ttRaf = null;
+    _positionTooltip(evt);
+  });
 }
 
 function hideTooltip() {
+  if (_ttRaf) { cancelAnimationFrame(_ttRaf); _ttRaf = null; }
   ensureTooltip().classList.remove('viz-tooltip--visible');
 }
 

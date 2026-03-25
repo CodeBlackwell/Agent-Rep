@@ -135,13 +135,14 @@ function _showLoading() {
       '<div class="jd-loading__timer">0.0s</div>' +
     '</div>';
   const timerEl = loading.querySelector('.jd-loading__timer');
-  _jdTimer = setInterval(() => {
+  (function tick() {
     timerEl.textContent = ((Date.now() - start) / 1000).toFixed(1) + 's';
-  }, 100);
+    _jdTimer = requestAnimationFrame(tick);
+  })();
 }
 
 function _hideLoading() {
-  if (_jdTimer) { clearInterval(_jdTimer); _jdTimer = null; }
+  if (_jdTimer) { cancelAnimationFrame(_jdTimer); _jdTimer = null; }
   jdModal.querySelector('#jd-loading').hidden = true;
   jdModal.querySelector('#jd-analyze').hidden = false;
   jdModal.querySelector('#jd-analyze').textContent = 'Analyze';

@@ -522,9 +522,10 @@ form.addEventListener('submit', e => {
     elapsedEl = statusDiv.querySelector('.status-elapsed');
     messages.appendChild(statusDiv);
     startTime = Date.now();
-    elapsedTimer = setInterval(() => {
+    (function tick() {
       elapsedEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
-    }, 100);
+      elapsedTimer = requestAnimationFrame(tick);
+    })();
   }
 
   function addStep(text) {
@@ -545,7 +546,7 @@ form.addEventListener('submit', e => {
   function collapseStatus() {
     if (!statusDiv || statusCollapsed) return;
     statusCollapsed = true;
-    clearInterval(elapsedTimer);
+    cancelAnimationFrame(elapsedTimer);
     const secs = ((Date.now() - startTime) / 1000).toFixed(1);
     const prev = stepsEl.querySelector('.status-step--active');
     if (prev) {
@@ -580,7 +581,7 @@ form.addEventListener('submit', e => {
   }
 
   function cleanup() {
-    if (elapsedTimer) clearInterval(elapsedTimer);
+    if (elapsedTimer) cancelAnimationFrame(elapsedTimer);
     if (_rafId) { cancelAnimationFrame(_rafId); _flushText(); }
     input.disabled = false;
     input.focus();
