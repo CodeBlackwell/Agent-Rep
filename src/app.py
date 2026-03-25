@@ -4,6 +4,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -30,6 +31,12 @@ def _static_hash() -> str:
     return h.hexdigest()[:8]
 
 STATIC_V = _static_hash()
+
+# Cypher fragment: exclude static/generated assets from snippet queries
+_SKIP_ASSET_PATHS = (
+    "AND NONE(seg IN split(f.path, '/') WHERE seg IN ['static', 'public', 'vendor', 'generated', 'assets']) "
+    "AND NOT f.path ENDS WITH '.min.js' AND NOT f.path ENDS WITH '.min.css' "
+)
 
 # Attach SQLite as additional log sink (after DB is created)
 logger.attach_db(db)
@@ -303,6 +310,7 @@ def get_repository_detail(repo_name: str, request: Request):
 
         rows = s.run(
             "MATCH (r:Repository {name: $name})-[:CONTAINS]->(f:File)-[:CONTAINS]->(cs:CodeSnippet)-[:DEMONSTRATES]->(sk:Skill) "
+            "WHERE true " + _SKIP_ASSET_PATHS +
             "OPTIONAL MATCH (d:Domain)-[:CONTAINS]->(cat:Category)-[:CONTAINS]->(sk) "
             "RETURN d.name AS domain, sk.name AS skill, count(cs) AS snippets, "
             "       collect(DISTINCT {file: f.path, start: cs.start_line, branch: r.default_branch})[0..3] AS files "
@@ -333,6 +341,53 @@ def get_repository_detail(repo_name: str, request: Request):
         breakdown = REPO_BREAKDOWNS.get(repo_name, {})
 
     return {"name": repo_name, "domains": domains, "breakdown": breakdown}
+
+
+# ---------------------------------------------------------------------------
+# Repo-scoped skill snippets (lazy-loaded by detail view accordions)
+# ---------------------------------------------------------------------------
+
+@lru_cache(maxsize=128)
+def _repo_skill_snippets(repo_name: str, skill_name: str):
+    neo4j = clients["neo4j_client"]
+    owner = os.getenv("GITHUB_OWNER", "codeblackwell")
+    with neo4j.driver.session() as s:
+        rows = s.run(
+            "MATCH (r:Repository {name: $repo})-[:CONTAINS]->(f:File)-[:CONTAINS]->(cs:CodeSnippet)-[:DEMONSTRATES]->(sk:Skill {name: $skill}) "
+            "WHERE true " + _SKIP_ASSET_PATHS +
+            "RETURN r.default_branch AS branch, r.private AS private, f.path AS path, "
+            "cs.name AS snippet_name, cs.context AS context, cs.content AS content, "
+            "cs.start_line AS start_line, cs.end_line AS end_line, cs.language AS lang "
+            "ORDER BY f.path, cs.start_line",
+            repo=repo_name, skill=skill_name,
+        ).data()
+    return [
+        {
+            "path": r["path"],
+            "snippet_name": r["snippet_name"],
+            "context": r["context"] or "",
+            "content": "" if r["private"] else (r["content"] or ""),
+            "start_line": r["start_line"] or 0,
+            "end_line": r["end_line"] or 0,
+            "language": r["lang"] or "",
+            "private": bool(r["private"]) if r["private"] is not None else False,
+            "branch": r["branch"] or "main",
+            "url": f"https://github.com/{owner}/{repo_name}/blob/{r['branch'] or 'main'}/{r['path']}#L{r['start_line'] or 0}",
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/repositories/{repo_name}/skills/{skill_name}/snippets")
+def repo_skill_snippets(repo_name: str, skill_name: str, request: Request):
+    vid = _visitor_id(request)
+    blocked = _check_limit(vid, "read", request)
+    if blocked:
+        return blocked
+    snippets = _repo_skill_snippets(repo_name, skill_name)
+    if not snippets:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return snippets
 
 
 # ---------------------------------------------------------------------------
@@ -399,6 +454,7 @@ def skill_references(request: Request, skill_name: str):
         rows = s.run(
             "MATCH (f:File)-[:CONTAINS]->(cs:CodeSnippet)-[d:DEMONSTRATES]->(sk:Skill {name: $name}) "
             "MATCH (r:Repository)-[:CONTAINS]->(f) "
+            "WHERE true " + _SKIP_ASSET_PATHS +
             "RETURN r.name AS repo, r.default_branch AS branch, r.private AS private, f.path AS path, "
             "cs.name AS snippet_name, cs.context AS context, cs.content AS content, "
             "cs.start_line AS start_line, cs.end_line AS end_line, "
@@ -548,6 +604,7 @@ def skill_page(request: Request, skill_slug: str):
             "MATCH (f:File)-[:CONTAINS]->(cs:CodeSnippet)-[:DEMONSTRATES]->(sk:Skill) "
             "WHERE toLower(sk.name) = toLower($name) "
             "MATCH (r:Repository)-[:CONTAINS]->(f) "
+            "WHERE true " + _SKIP_ASSET_PATHS +
             "RETURN r.name AS repo, f.path AS path, cs.name AS snippet_name, cs.context AS context, "
             "cs.start_line AS start_line, cs.end_line AS end_line, r.private AS private "
             "ORDER BY r.name, f.path LIMIT 10",

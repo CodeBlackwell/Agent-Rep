@@ -8,9 +8,10 @@
   if (!LEFT || !RIGHT || !SHOWCASE || !DETAIL) return;
 
   const SHOWCASE_NAMES = ['PROVE', 'C.R.A.C.K.', 'PANEL', 'SPICE', 'veridatum'];
+  const snippetCache = new Map();
 
-  const SIZE = 72;
-  const OUTER = SIZE / 2 - 2;
+  const SIZE = 84;
+  const OUTER = SIZE / 2 - 6;
   const INNER = OUTER - 11;
   const EXP_SIZE = 200;
   const EXP_OUTER = EXP_SIZE / 2 - 4;
@@ -215,32 +216,110 @@
       const body = document.createElement('div');
       body.className = 'repo-detail__accordion-body';
       for (const sk of skills.slice(0, 10)) {
-        const row = document.createElement('div');
-        row.className = 'repo-detail__skill';
+        const skillDetails = document.createElement('details');
+        skillDetails.className = 'repo-detail__skill-accordion';
 
-        const name = document.createElement('span');
-        name.textContent = sk.skill;
-        row.appendChild(name);
+        const summary = document.createElement('summary');
+        summary.className = 'repo-detail__skill';
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = sk.skill;
+        summary.appendChild(nameSpan);
+        const countSpan = document.createElement('span');
+        countSpan.className = 'repo-detail__count';
+        countSpan.textContent = sk.snippets;
+        summary.appendChild(countSpan);
+        skillDetails.appendChild(summary);
 
-        const count = document.createElement('span');
-        count.className = 'repo-detail__count';
-        count.textContent = sk.snippets;
-        row.appendChild(count);
+        const snippetBody = document.createElement('div');
+        snippetBody.className = 'repo-detail__snippet-body';
+        skillDetails.appendChild(snippetBody);
 
-        if (sk.files && sk.files.length) {
-          const link = document.createElement('a');
-          link.href = sk.files[0];
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.className = 'repo-detail__link';
-          link.textContent = '↗';
-          link.title = 'View on GitHub';
-          row.appendChild(link);
-        }
-        body.appendChild(row);
+        let loaded = false;
+        skillDetails.addEventListener('toggle', () => {
+          if (!skillDetails.open || loaded) return;
+          loaded = true;
+          loadSnippets(detail.name, sk.skill, snippetBody);
+        });
+
+        body.appendChild(skillDetails);
       }
       group.appendChild(body);
       container.appendChild(group);
+    }
+  }
+
+  /* ── Lazy-load snippets for a skill accordion ──── */
+
+  function loadSnippets(repoName, skillName, container) {
+    const key = repoName + ':' + skillName;
+    if (snippetCache.has(key)) {
+      renderSnippets(snippetCache.get(key), repoName, container);
+      return;
+    }
+    container.innerHTML = '<p class="repo-detail__loading">Loading…</p>';
+    fetch('/api/repositories/' + encodeURIComponent(repoName) + '/skills/' + encodeURIComponent(skillName) + '/snippets')
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(data => { snippetCache.set(key, data); renderSnippets(data, repoName, container); })
+      .catch(() => { container.innerHTML = '<p class="repo-detail__loading">Could not load snippets</p>'; });
+  }
+
+  function renderSnippets(snippets, repoName, container) {
+    container.innerHTML = '';
+    var owner = window.__GITHUB_OWNER__ || 'codeblackwell';
+    var LANGS = { py: 'Python', js: 'JavaScript', ts: 'TypeScript', tsx: 'TypeScript', jsx: 'JavaScript', java: 'Java', go: 'Go', rs: 'Rust' };
+    for (var s of snippets) {
+      var div = document.createElement('div');
+      div.className = 'repo-detail__snippet';
+
+      var fileLine = document.createElement('div');
+      fileLine.className = 'repo-detail__snippet-file';
+      var a = document.createElement('a');
+      a.href = s.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.className = 'repo-detail__link';
+      a.textContent = s.path;
+      fileLine.appendChild(a);
+      var range = document.createElement('span');
+      range.className = 'repo-detail__snippet-range';
+      range.textContent = s.end_line > s.start_line ? 'L' + s.start_line + '–' + s.end_line : 'L' + s.start_line;
+      fileLine.appendChild(range);
+      if (s.language && LANGS[s.language]) {
+        var lang = document.createElement('span');
+        lang.className = 'repo-detail__snippet-lang';
+        lang.textContent = LANGS[s.language];
+        fileLine.appendChild(lang);
+      }
+      div.appendChild(fileLine);
+
+      if (s.context) {
+        var ctx = document.createElement('p');
+        ctx.className = 'repo-detail__snippet-context';
+        ctx.textContent = s.context;
+        div.appendChild(ctx);
+      }
+
+      if (s.content) {
+        var escaped = s.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        var lines = s.content.split('\n').length;
+        var langCls = s.language ? ' class="language-' + s.language + '"' : '';
+        var code = document.createElement('details');
+        code.className = 'repo-detail__snippet-code';
+        code.innerHTML = '<summary><span class="repo-detail__snippet-arrow">▸</span> ' + lines + ' line' + (lines !== 1 ? 's' : '') + '</summary>' +
+          '<pre class="repo-detail__snippet-pre"><code' + langCls + '>' + escaped + '</code></pre>';
+        code.addEventListener('toggle', function() {
+          this.querySelector('.repo-detail__snippet-arrow').textContent = this.open ? '▾' : '▸';
+          if (this.open && window.hljs) window.hljs.highlightElement(this.querySelector('code'));
+        });
+        div.appendChild(code);
+      } else if (s.private) {
+        var redacted = document.createElement('span');
+        redacted.className = 'repo-detail__snippet-redacted';
+        redacted.textContent = 'PRIVATE — CODE REDACTED';
+        div.appendChild(redacted);
+      }
+
+      container.appendChild(div);
     }
   }
 
@@ -248,11 +327,12 @@
 
   function closeDetail() {
     if (!expanded) return;
+    allTiles().forEach(t => {
+      t.classList.remove('repo-tile--hover', 'repo-tile--dimmed');
+      explodeSegments(t, false);
+    });
     expanded = null;
     DETAIL.classList.remove('repo-detail--visible');
-    document.querySelectorAll('.repo-tile--dimmed').forEach(t =>
-      t.classList.remove('repo-tile--dimmed')
-    );
   }
 
   document.getElementById('graph-panel').addEventListener('click', (e) => {
