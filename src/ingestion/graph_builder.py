@@ -144,8 +144,6 @@ def build_graph(repo_path, neo4j_client, embed_client, chat_client):
                 stats["skipped_files"] += 1
                 logger.debug("graph.file_skip", file=rel_path, reason="no_changes",
                               unchanged=len(unchanged))
-                # Re-link skills for unchanged chunks (cheap — no LLM calls)
-                # Only needed if skill taxonomy changed; skip classify entirely
                 continue
 
             stats["changed_snippets"] += len(changed)

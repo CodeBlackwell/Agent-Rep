@@ -1110,3 +1110,5 @@ window.resetGraph = function () {
   const empty = document.querySelector('.graph-empty');
   if (empty) empty.style.display = '';
 };
+
+window.domainColor = domainColor;

@@ -615,6 +615,53 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   }
 }
 
+/* ── Repo tile rails (inside #graph-panel) ───── */
+.repo-rail {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 6;
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.repo-rail--left { left: 0.5rem; }
+.repo-rail--right { right: 0.5rem; }
+
+.repo-rail--hidden,
+.hero-faded .repo-rail {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.95);
+}
+
+.repo-tile {
+  width: 120px;
+  padding: 0.4rem 0.5rem;
+  background: rgba(234, 213, 182, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(212, 205, 196, 0.5);
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.repo-tile__name {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-light);
+  margin-bottom: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repo-tile__map { display: block; }
+
+@media (max-width: 1024px) { .repo-rail { display: none; } }
+
 /* Chat panel */
 #chat-panel {
   flex: 1;

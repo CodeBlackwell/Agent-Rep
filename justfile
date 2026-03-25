@@ -36,3 +36,7 @@ backup tag="":
 
 restore tag="":
     ssh {{SERVER}} 'cd {{APP_DIR}} && bash scripts/db-restore.sh {{tag}}'
+
+# Sync local Neo4j repos to prod (MERGE-based, skips existing data)
+sync *args="":
+    uv run python scripts/sync-to-prod.py {{args}}

@@ -179,6 +179,36 @@ def chat(request: Request, q: str, session_id: str | None = None, fp: str | None
 
 
 # ---------------------------------------------------------------------------
+# Repository overview (repo tiles on landing page)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/repositories")
+def list_repositories(request: Request):
+    vid = _visitor_id(request)
+    blocked = _check_limit(vid, "read", request)
+    if blocked:
+        return blocked
+
+    neo4j = clients["neo4j_client"]
+    with neo4j.driver.session() as s:
+        rows = s.run(
+            "MATCH (r:Repository) "
+            "OPTIONAL MATCH (r)-[:CONTAINS]->(:File)-[:CONTAINS]->(cs:CodeSnippet)-[:DEMONSTRATES]->(sk:Skill) "
+            "OPTIONAL MATCH (d:Domain)-[:CONTAINS]->(:Category)-[:CONTAINS]->(sk) "
+            "WITH r, d.name AS domain, count(DISTINCT sk) AS skill_count, count(cs) AS snippet_count "
+            "RETURN r.name AS name, r.private AS private, "
+            "       collect({domain: domain, skill_count: skill_count, snippets: snippet_count}) AS domains "
+            "ORDER BY r.name"
+        ).data()
+
+    return [
+        {"name": r["name"], "private": bool(r["private"]) if r["private"] else False,
+         "domains": [d for d in r["domains"] if d["domain"]]}
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
 # History & log browsing endpoints
 # ---------------------------------------------------------------------------
 
