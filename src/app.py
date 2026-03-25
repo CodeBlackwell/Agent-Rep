@@ -26,7 +26,7 @@ db = clients["db"]
 def _static_hash() -> str:
     h = hashlib.md5()
     static_dir = Path(__file__).parent / "static"
-    for f in sorted(static_dir.glob("*.css")) + sorted(static_dir.glob("*.js")):
+    for f in sorted(static_dir.glob("*.min.css")) + sorted(static_dir.glob("*.min.js")):
         h.update(f.read_bytes())
     return h.hexdigest()[:8]
 

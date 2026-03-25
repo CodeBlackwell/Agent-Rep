@@ -88,9 +88,37 @@ function renderMarkdown(text) {
     .replace(/\n/g, '\n');
 }
 
+let _mermaidReady = false;
+let _mermaidLoading = null;
+
+function _loadMermaid() {
+  if (_mermaidLoading) return _mermaidLoading;
+  _mermaidLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+    s.onload = () => {
+      window.mermaid.initialize({ startOnLoad: false, theme: 'neutral', themeVariables: { fontSize: '14px' } });
+      _mermaidReady = true;
+      resolve();
+    };
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return _mermaidLoading;
+}
+
 function renderMermaidBlocks(container) {
-  if (!window.mermaid) return;
-  container.querySelectorAll('.mermaid:not([data-processed])').forEach(el => {
+  const els = container.querySelectorAll('.mermaid:not([data-processed])');
+  if (!els.length) return;
+  if (_mermaidReady) {
+    _renderMermaidEls(els);
+  } else {
+    _loadMermaid().then(() => _renderMermaidEls(els)).catch(() => {});
+  }
+}
+
+function _renderMermaidEls(els) {
+  els.forEach(el => {
     el.setAttribute('data-processed', 'true');
     const code = el.textContent.trim();
     const id = 'mermaid-' + Math.random().toString(36).slice(2, 8);
@@ -144,11 +172,31 @@ function closeMermaidLightbox() {
 
 /* ── Collapsible code blocks ──────────────────────────────── */
 
+let _hlObserver = null;
+
+function _getHlObserver() {
+  if (_hlObserver) return _hlObserver;
+  if (!window.IntersectionObserver) return null;
+  _hlObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      if (!window.hljs) continue;
+      hljs.highlightElement(entry.target);
+      _hlObserver.unobserve(entry.target);
+    }
+  }, { rootMargin: '200px' });
+  return _hlObserver;
+}
+
 function highlightCode(container) {
   if (!window.hljs) return;
-  container.querySelectorAll('pre code:not([data-highlighted])').forEach(el => {
-    hljs.highlightElement(el);
-  });
+  const observer = _getHlObserver();
+  const els = container.querySelectorAll('pre code:not([data-highlighted])');
+  if (observer) {
+    els.forEach(el => observer.observe(el));
+  } else {
+    els.forEach(el => hljs.highlightElement(el));
+  }
 }
 
 function wrapCodeBlocks(container) {
@@ -516,8 +564,24 @@ form.addEventListener('submit', e => {
   if (sessionId) url += `&session_id=${encodeURIComponent(sessionId)}`;
   if (window.__fp) url += `&fp=${encodeURIComponent(window.__fp)}`;
 
+  // SSE debounce state — buffer text updates, flush at 1/frame
+  let _pendingText = null;
+  let _rafId = null;
+
+  function _flushText() {
+    _rafId = null;
+    if (_pendingText === null) return;
+    const text = _pendingText;
+    _pendingText = null;
+    if (loader.parentNode) loader.remove();
+    collapseStatus();
+    if (!assistantDiv) assistantDiv = addMessage('assistant', text);
+    else { assistantDiv.innerHTML = renderMarkdown(text); renderMermaidBlocks(assistantDiv); resizeChatPanel(); }
+  }
+
   function cleanup() {
     if (elapsedTimer) clearInterval(elapsedTimer);
+    if (_rafId) { cancelAnimationFrame(_rafId); _flushText(); }
     input.disabled = false;
     input.focus();
   }
@@ -534,9 +598,10 @@ form.addEventListener('submit', e => {
       if (d.phase === 'tool') { toolCount++; addStep(toolLabel(d.tool, d.args || {})); }
       else if (d.phase === 'curating') addStep('Curating evidence\u2026');
       else if (d.phase === 'answering') addStep('Composing answer\u2026');
-      /* no auto-scroll — let the user read at their own pace */
     } else {
       if (data === '[DONE]') {
+        if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+        _flushText();
         collapseStatus();
         if (assistantDiv) {
           wrapCodeBlocks(assistantDiv);
@@ -545,11 +610,8 @@ form.addEventListener('submit', e => {
         cleanup();
         return;
       }
-      if (loader.parentNode) loader.remove();
-      collapseStatus();
-      if (!assistantDiv) assistantDiv = addMessage('assistant', data);
-      else { assistantDiv.innerHTML = renderMarkdown(data); renderMermaidBlocks(assistantDiv); resizeChatPanel(); }
-      /* no auto-scroll — let the user read at their own pace */
+      _pendingText = data;
+      if (!_rafId) _rafId = requestAnimationFrame(_flushText);
     }
   }
 

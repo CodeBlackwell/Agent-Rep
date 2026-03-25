@@ -10,7 +10,7 @@
 
   <meta property="og:title" content="{{ skill.name }} — {{ engineer_name }} | PROVE" />
   <meta property="og:description" content="{{ engineer_name }} demonstrates {{ skill.proficiency }} proficiency in {{ skill.name }} with {{ skill.snippet_count }} code examples across {{ skill.repo_count }} repositories." />
-  <meta property="og:image" content="https://prove.codeblackwell.ai/static/og.png" />
+  <meta property="og:image" content="https://prove.codeblackwell.ai/static/og.jpg" />
   <meta property="og:url" content="https://prove.codeblackwell.ai/skills/{{ skill.name | lower | replace(' ', '-') }}" />
   <meta property="og:type" content="profile" />
   <meta property="og:site_name" content="PROVE" />
@@ -18,7 +18,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="{{ skill.name }} — {{ engineer_name }} | PROVE" />
   <meta name="twitter:description" content="{{ skill.proficiency | capitalize }} proficiency in {{ skill.name }} — {{ skill.snippet_count }} code examples." />
-  <meta name="twitter:image" content="https://prove.codeblackwell.ai/static/og.png" />
+  <meta name="twitter:image" content="https://prove.codeblackwell.ai/static/og.jpg" />
 
   <script type="application/ld+json">
   {
@@ -38,7 +38,7 @@
   <meta name="robots" content="noindex" />
   {% endif %}
 
-  <link rel="stylesheet" href="{{ cdn_base }}/static/style.css?v={{ static_v }}">
+  <link rel="stylesheet" href="{{ cdn_base }}/static/style.min.css?v={{ static_v }}">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">

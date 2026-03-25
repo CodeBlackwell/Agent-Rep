@@ -6,8 +6,8 @@ from src.ingestion.skill_taxonomy import (
 
 NODE_COLORS = {
     "Engineer": "#c4956a", "Repository": "#6b8f9e",
-    "Domain": "#8b7355", "Category": "#b8805a", "Skill": "#7a8b6f",
-    "Skill_claimed": "#a8a099", "Skill_gap": "#c4756a",
+    "Domain": "#8b7355", "Category": "#b8805a", "Skill": "#4a7856",
+    "Skill_claimed": "#9a9590", "Skill_gap": "#b35a52",
 }
 EDGE_COLORS = {
     "owns": "#a8a099", "domain": "#8b7355", "category": "#b8805a", "skill": "#7a8b6f",

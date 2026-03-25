@@ -12,6 +12,22 @@ ralph.py
 ralph_timing.log
 scripts/sync-to-prod.py
 
+# Build artifacts
+node_modules/
+src/static/*.min.js
+src/static/*.min.css
+src/static/*.min.js.br
+src/static/*.min.js.gz
+src/static/*.min.css.br
+src/static/*.min.css.gz
+src/static/d3.custom.min.js
+src/static/d3.custom.min.js.br
+src/static/d3.custom.min.js.gz
+src/static/background.webp
+src/static/background.webp.br
+src/static/background.webp.gz
+package-lock.json
+
 # Terraform
 infra/terraform.tfstate*
 infra/.terraform/

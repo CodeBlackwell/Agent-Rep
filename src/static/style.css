@@ -144,7 +144,7 @@ body {
   line-height: 1.7;
   color: var(--ink);
   background: var(--bg);
-  background-image: url('background.svg');
+  background-image: url('background.webp');
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-attachment: fixed;
@@ -1542,13 +1542,13 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.tip-prof--extensive { background: #5a7a4f22; color: #4a6a3f; }
-.tip-prof--moderate { background: #8b735522; color: #7a6345; }
-.tip-prof--minimal { background: #9e989022; color: #8a8280; }
+.tip-prof--extensive { background: #4a785622; color: #3d6845; }
+.tip-prof--moderate { background: #8a6f4822; color: #7a6040; }
+.tip-prof--minimal { background: #9a959022; color: #8a857e; }
 
 .tip-count { margin-top: 0.25rem; color: var(--ink-light); }
 .tip-status { margin-top: 0.25rem; font-style: italic; color: var(--ink-faint); }
-.tip-status--gap { color: #b05a4f; }
+.tip-status--gap { color: #a34e44; }
 
 /* Repo breakdown in tooltip */
 .tip-repos { margin-top: 0.35rem; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 0.3rem; }

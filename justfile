@@ -4,6 +4,9 @@ set dotenv-load
 SERVER := env("PROVE_SERVER", "root@your-server")
 APP_DIR := env("PROVE_APP_DIR", "/opt/prove")
 
+build:
+    bash scripts/build-static.sh
+
 dev:
     -lsof -ti :7860 | xargs kill 2>/dev/null
     @echo "Starting Neo4j..."
@@ -14,7 +17,7 @@ dev:
 optimize-svg:
     bash scripts/optimize-svg.sh
 
-deploy:
+deploy: build
     git push
     ssh {{SERVER}} 'cd {{APP_DIR}} && git fetch origin && git reset --hard origin/main && git lfs pull && docker compose -f docker-compose.prod.yml up -d --build'
 

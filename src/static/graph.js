@@ -203,9 +203,9 @@ function getSkillList(state) {
 /* ── Status helpers ─────────────────────────────────────────── */
 
 const STATUS_FILL = {
-  demonstrated: '#5a7a4f',
-  claimed_only: '#9e9890',
-  gap: '#c4756a',
+  demonstrated: '#4a7856',
+  claimed_only: '#9a9590',
+  gap: '#b35a52',
 };
 
 function statusColor(status) {
@@ -216,8 +216,9 @@ function statusColor(status) {
 
 const DOMAIN_HUES = {};
 const PALETTE = [
-  '#4a7c59', '#5b7fa5', '#8b6f47', '#7a5980', '#5a8a8a',
-  '#8a6b5a', '#6b7a3a', '#6a5a9a', '#9a6a5a', '#4a8a6a',
+  '#4a7c55', '#4f6fa0', '#b57342', '#7a5982', '#48838f',
+  '#9e4a50', '#6d8a4a', '#6a5a9a', '#7e7a42', '#96647e',
+  '#4a8a72', '#8a7048',
 ];
 let _hueIdx = 0;
 
@@ -230,8 +231,8 @@ function domainColor(domainName) {
 }
 
 function skillFill(d, domainName) {
-  if (d.status === 'gap') return '#e8d0cc';
-  if (d.status === 'claimed_only') return '#d4cec6';
+  if (d.status === 'gap') return '#e6ccc6';
+  if (d.status === 'claimed_only') return '#d6d2cc';
   return domainColor(domainName);
 }
 
@@ -544,11 +545,25 @@ function _renderRefList(body, byRepo, filterRepo) {
   _highlightRefCode(body);
 }
 
+let _refHlObserver = null;
+
 function _highlightRefCode(container) {
   if (!window.hljs) return;
-  container.querySelectorAll('.ref-item__code-pre code:not([data-highlighted])').forEach(el => {
-    hljs.highlightElement(el);
-  });
+  const els = container.querySelectorAll('.ref-item__code-pre code:not([data-highlighted])');
+  if (window.IntersectionObserver) {
+    if (!_refHlObserver) {
+      _refHlObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting || !window.hljs) continue;
+          hljs.highlightElement(entry.target);
+          _refHlObserver.unobserve(entry.target);
+        }
+      }, { rootMargin: '200px' });
+    }
+    els.forEach(el => _refHlObserver.observe(el));
+  } else {
+    els.forEach(el => hljs.highlightElement(el));
+  }
 }
 
 /* ── Treemap Renderer ──────────────────────────────────────── */
@@ -562,15 +577,12 @@ const TreemapRenderer = {
 
   render(state, dims) {
     const g = this._root;
-    g.selectAll('*').remove();
-    if (state.empty) return;
+    if (state.empty) { g.selectAll('*').remove(); return; }
 
     const tree = buildHierarchyTree(state);
     const root = d3.hierarchy(tree)
       .sum(d => {
         if (d.children) return 0;
-        // Use log scale so high-volume skills (Testing: 10k) don't swallow
-        // smaller but significant ones (FastAPI: 330). Min floor for gaps.
         const count = Math.max(d.evidence_count || 0, 20);
         return Math.log1p(count);
       })
@@ -589,46 +601,59 @@ const TreemapRenderer = {
 
     const allNodes = root.descendants().filter(d => d.depth > 0);
     const gNode = g.attr('transform', `translate(${pad},${pad})`);
+    const T = 400;
 
-    // Domain & category backgrounds
+    // Domain & category backgrounds — enter/update/exit
     gNode.selectAll('rect.treemap-group')
       .data(allNodes.filter(d => d.children), d => d.data.name)
       .join(
         enter => enter.append('rect')
           .attr('class', 'treemap-group')
-          .attr('x', d => d.x0)
-          .attr('y', d => d.y0)
-          .attr('width', d => Math.max(0, d.x1 - d.x0))
-          .attr('height', d => Math.max(0, d.y1 - d.y0))
           .attr('rx', 4)
-          .style('fill', d => d.depth === 1 ? '#ebe6df' : '#f0ece6')
-          .style('stroke', '#d4cdc4')
+          .style('fill', d => d.depth === 1 ? '#eae4dd' : '#efebe5')
+          .style('stroke', '#d2cbc2')
           .style('stroke-width', d => d.depth === 1 ? 1 : 0.5)
           .style('opacity', 0)
-          .transition().duration(400)
-          .style('opacity', 1)
+          .attr('x', d => d.x0).attr('y', d => d.y0)
+          .attr('width', d => Math.max(0, d.x1 - d.x0))
+          .attr('height', d => Math.max(0, d.y1 - d.y0))
+          .call(e => e.transition().duration(T).style('opacity', 1)),
+        update => update.call(u => u.transition().duration(T)
+          .attr('x', d => d.x0).attr('y', d => d.y0)
+          .attr('width', d => Math.max(0, d.x1 - d.x0))
+          .attr('height', d => Math.max(0, d.y1 - d.y0))),
+        exit => exit.call(x => x.transition().duration(T).style('opacity', 0).remove())
       );
 
-    // Domain & category labels
+    // Domain & category labels — enter/update/exit
+    function _groupLabelText(d) {
+      const w = d.x1 - d.x0;
+      const h = d.y1 - d.y0;
+      if (w < 30 || h < (mobile ? 14 : 20)) return '';
+      const charW = mobile ? 5.5 : 7;
+      const maxChars = Math.floor(w / charW);
+      return d.data.name.length > maxChars ? d.data.name.slice(0, maxChars - 1) + '\u2026' : d.data.name;
+    }
+
     gNode.selectAll('text.treemap-group-label')
       .data(allNodes.filter(d => d.children), d => d.data.name)
-      .join('text')
-      .attr('class', 'treemap-group-label')
-      .attr('x', d => d.x0 + (mobile ? 3 : 6))
-      .attr('y', d => d.y0 + (mobile ? 12 : 15))
-      .style('font-size', d => mobile
-        ? (d.depth === 1 ? '0.58rem' : '0.5rem')
-        : (d.depth === 1 ? '0.72rem' : '0.65rem'))
-      .style('fill', '#8a8380')
-      .style('font-weight', d => d.depth === 1 ? '400' : '300')
-      .text(d => {
-        const w = d.x1 - d.x0;
-        const h = d.y1 - d.y0;
-        if (w < 30 || h < (mobile ? 14 : 20)) return '';
-        const charW = mobile ? 5.5 : 7;
-        const maxChars = Math.floor(w / charW);
-        return d.data.name.length > maxChars ? d.data.name.slice(0, maxChars - 1) + '…' : d.data.name;
-      });
+      .join(
+        enter => enter.append('text')
+          .attr('class', 'treemap-group-label')
+          .style('font-size', d => mobile
+            ? (d.depth === 1 ? '0.58rem' : '0.5rem')
+            : (d.depth === 1 ? '0.72rem' : '0.65rem'))
+          .style('fill', '#8a8380')
+          .style('font-weight', d => d.depth === 1 ? '400' : '300')
+          .attr('x', d => d.x0 + (mobile ? 3 : 6))
+          .attr('y', d => d.y0 + (mobile ? 12 : 15))
+          .text(_groupLabelText),
+        update => update.call(u => u.transition().duration(T)
+          .attr('x', d => d.x0 + (mobile ? 3 : 6))
+          .attr('y', d => d.y0 + (mobile ? 12 : 15)))
+          .text(_groupLabelText),
+        exit => exit.remove()
+      );
 
     // Register all repo names for stable shade ordering
     const leaves = root.leaves();
@@ -636,122 +661,152 @@ const TreemapRenderer = {
       if (leaf.data.repo_breakdown) _ensureRepoOrder(leaf.data.repo_breakdown);
     }
 
-    // Skill tiles — groups with repo stripes
+    // Helper: rebuild leaf interior (stripes or solid rect) for a group element
+    function _buildLeafInterior(el, d) {
+      // Remove old interior except the hit rect
+      el.selectAll(':not(.treemap-leaf-hit)').remove();
+      const w = Math.max(0, d.x1 - d.x0);
+      const h = Math.max(0, d.y1 - d.y0);
+      const dom = d.parent && d.parent.parent ? d.parent.parent.data.name : '';
+      const baseColor = domainColor(dom);
+      const bd = d.data.repo_breakdown || [];
+
+      if (d.data.status !== 'demonstrated' || bd.length <= 1) {
+        el.insert('rect', '.treemap-leaf-hit')
+          .attr('class', 'treemap-leaf')
+          .attr('x', d.x0).attr('y', d.y0)
+          .attr('width', w).attr('height', h)
+          .attr('rx', 3)
+          .style('fill', skillFill(d.data, dom))
+          .style('stroke', d.data.status === 'gap' ? '#b35a52' : d.data.status === 'claimed_only' ? '#b0a898' : 'none')
+          .style('stroke-width', d.data.status !== 'demonstrated' ? 1.5 : 0)
+          .style('stroke-dasharray', d.data.status === 'gap' ? '3 2' : 'none');
+      } else {
+        const clipId = 'clip-' + d.data.name.replace(/[^a-zA-Z0-9]/g, '_') + '-' + Math.random().toString(36).slice(2, 6);
+        el.insert('clipPath', '.treemap-leaf-hit').attr('id', clipId)
+          .append('rect')
+          .attr('x', d.x0).attr('y', d.y0)
+          .attr('width', w).attr('height', h)
+          .attr('rx', 3);
+        const stripeG = el.insert('g', '.treemap-leaf-hit').attr('clip-path', 'url(#' + clipId + ')');
+        const total = bd.reduce((s, r) => s + r.count, 0);
+        let yOff = d.y0;
+        for (const repo of bd) {
+          const stripeH = (repo.count / total) * h;
+          stripeG.append('rect')
+            .attr('class', 'treemap-stripe')
+            .attr('x', d.x0).attr('y', yOff)
+            .attr('width', w).attr('height', Math.max(0, stripeH))
+            .style('fill', repoShade(baseColor, repo.repo));
+          yOff += stripeH;
+        }
+      }
+    }
+
+    // Event handlers (shared between enter and update)
+    function _bindLeafEvents(hit) {
+      hit
+        .style('fill', 'transparent')
+        .style('cursor', 'pointer')
+        .on('mouseover', (evt, d) => {
+          const dom = d.parent && d.parent.parent ? d.parent.parent.data.name : '';
+          showTooltip(evt, tipHtml(d.data, domainColor(dom)));
+          d3.select(evt.target.parentNode).style('opacity', 1);
+        })
+        .on('mousemove', (evt) => { moveTooltip(evt); })
+        .on('mouseout', (evt) => {
+          hideTooltip();
+          d3.select(evt.target.parentNode).style('opacity', 0.88);
+        })
+        .on('click', (evt, d) => {
+          evt.stopPropagation();
+          hideTooltip();
+          if (d.data.status === 'demonstrated') openRefModal(d.data.name);
+        });
+    }
+
+    // Skill tiles — enter/update/exit
     const leafGroups = gNode.selectAll('g.treemap-leaf-group')
       .data(leaves, d => d.data.name)
       .join(
         enter => {
-          const g = enter.append('g').attr('class', 'treemap-leaf-group');
-
-          // For each leaf, render either repo stripes or a solid rect
-          g.each(function(d) {
-            const el = d3.select(this);
-            const w = Math.max(0, d.x1 - d.x0);
-            const h = Math.max(0, d.y1 - d.y0);
-            const dom = d.parent && d.parent.parent ? d.parent.parent.data.name : '';
-            const baseColor = domainColor(dom);
-            const bd = d.data.repo_breakdown || [];
-
-            if (d.data.status !== 'demonstrated' || bd.length <= 1) {
-              // Solid rect for gap/claimed/single-repo
-              el.append('rect')
-                .attr('class', 'treemap-leaf')
-                .attr('x', d.x0).attr('y', d.y0)
-                .attr('width', w).attr('height', h)
-                .attr('rx', 3)
-                .style('fill', skillFill(d.data, dom))
-                .style('stroke', d.data.status === 'gap' ? '#c4756a' : d.data.status === 'claimed_only' ? '#b0a898' : 'none')
-                .style('stroke-width', d.data.status !== 'demonstrated' ? 1.5 : 0)
-                .style('stroke-dasharray', d.data.status === 'gap' ? '3 2' : 'none');
-            } else {
-              // Clip path for rounded corners
-              const clipId = 'clip-' + d.data.name.replace(/[^a-zA-Z0-9]/g, '_') + '-' + Math.random().toString(36).slice(2, 6);
-              el.append('clipPath').attr('id', clipId)
-                .append('rect')
-                .attr('x', d.x0).attr('y', d.y0)
-                .attr('width', w).attr('height', h)
-                .attr('rx', 3);
-
-              const stripeG = el.append('g').attr('clip-path', 'url(#' + clipId + ')');
-              const total = bd.reduce((s, r) => s + r.count, 0);
-              let yOff = d.y0;
-              for (const repo of bd) {
-                const stripeH = (repo.count / total) * h;
-                stripeG.append('rect')
-                  .attr('class', 'treemap-stripe')
-                  .attr('x', d.x0).attr('y', yOff)
-                  .attr('width', w).attr('height', Math.max(0, stripeH))
-                  .style('fill', repoShade(baseColor, repo.repo));
-                yOff += stripeH;
-              }
-            }
-          });
-
-          // Invisible hit rect on top for events
-          g.append('rect')
-            .attr('class', 'treemap-leaf-hit')
+          const eg = enter.append('g').attr('class', 'treemap-leaf-group');
+          eg.each(function(d) { _buildLeafInterior(d3.select(this), d); });
+          // Hit rect on top
+          const hit = eg.append('rect').attr('class', 'treemap-leaf-hit')
             .attr('x', d => d.x0).attr('y', d => d.y0)
             .attr('width', d => Math.max(0, d.x1 - d.x0))
-            .attr('height', d => Math.max(0, d.y1 - d.y0))
-            .style('fill', 'transparent')
-            .style('cursor', 'pointer')
-            .on('mouseover', (evt, d) => {
-              const dom = d.parent && d.parent.parent ? d.parent.parent.data.name : '';
-              showTooltip(evt, tipHtml(d.data, domainColor(dom)));
-              d3.select(evt.target.parentNode).style('opacity', 1);
-            })
-            .on('mousemove', (evt) => { moveTooltip(evt); })
-            .on('mouseout', (evt) => {
-              hideTooltip();
-              d3.select(evt.target.parentNode).style('opacity', 0.88);
-            })
-            .on('click', (evt, d) => {
-              evt.stopPropagation();
-              hideTooltip();
-              if (d.data.status === 'demonstrated') openRefModal(d.data.name);
-            });
-
-          g.style('opacity', 0)
+            .attr('height', d => Math.max(0, d.y1 - d.y0));
+          _bindLeafEvents(hit);
+          eg.style('opacity', 0)
             .transition().duration(500).ease(d3.easeCubicOut)
             .style('opacity', 0.88);
-
-          return g;
-        }
+          return eg;
+        },
+        update => {
+          // Rebuild interior with new positions, update hit rect
+          update.each(function(d) { _buildLeafInterior(d3.select(this), d); });
+          update.select('.treemap-leaf-hit')
+            .attr('x', d => d.x0).attr('y', d => d.y0)
+            .attr('width', d => Math.max(0, d.x1 - d.x0))
+            .attr('height', d => Math.max(0, d.y1 - d.y0));
+          return update;
+        },
+        exit => exit.call(x => x.transition().duration(T)
+          .style('opacity', 0).remove())
       );
 
-    // Touch support for treemap tiles (SVG click unreliable on mobile)
+    // Touch support
     leafGroups.each(function(d) {
-      this.addEventListener('touchend', (evt) => {
-        evt.preventDefault();
-        hideTooltip();
-        if (d.data.status === 'demonstrated') openRefModal(d.data.name);
-      }, { passive: false });
+      if (!this._touchBound) {
+        this._touchBound = true;
+        this.addEventListener('touchend', (evt) => {
+          evt.preventDefault();
+          hideTooltip();
+          if (d.data.status === 'demonstrated') openRefModal(d.data.name);
+        }, { passive: false });
+      }
     });
 
-    // Skill labels inside tiles
+    // Skill labels — enter/update/exit
+    function _leafLabelText(d) {
+      const w = d.x1 - d.x0;
+      const h = d.y1 - d.y0;
+      const minH = mobile ? 12 : 16;
+      const minW = mobile ? 24 : 30;
+      if (w < minW || h < minH) return '';
+      const charW = mobile ? 5 : 6.5;
+      const maxChars = Math.floor(w / charW);
+      return d.data.name.length > maxChars ? d.data.name.slice(0, maxChars - 1) + '\u2026' : d.data.name;
+    }
+
     gNode.selectAll('text.treemap-label')
       .data(leaves, d => d.data.name)
-      .join('text')
-      .attr('class', 'treemap-label')
-      .attr('x', d => d.x0 + (mobile ? 3 : 4))
-      .attr('y', d => d.y0 + (d.y1 - d.y0) / 2 + (mobile ? 3 : 4))
-      .style('font-size', d => {
-        const w = d.x1 - d.x0;
-        if (mobile) return w > 60 ? '0.58rem' : '0.48rem';
-        return w > 80 ? '0.72rem' : '0.6rem';
-      })
-      .style('fill', d => d.data.status === 'demonstrated' ? '#fff' : '#4a4a4a')
-      .style('pointer-events', 'none')
-      .text(d => {
-        const w = d.x1 - d.x0;
-        const h = d.y1 - d.y0;
-        const minH = mobile ? 12 : 16;
-        const minW = mobile ? 24 : 30;
-        if (w < minW || h < minH) return '';
-        const charW = mobile ? 5 : 6.5;
-        const maxChars = Math.floor(w / charW);
-        return d.data.name.length > maxChars ? d.data.name.slice(0, maxChars - 1) + '…' : d.data.name;
-      });
+      .join(
+        enter => enter.append('text')
+          .attr('class', 'treemap-label')
+          .style('pointer-events', 'none')
+          .style('fill', d => d.data.status === 'demonstrated' ? '#fff' : '#4a4a4a')
+          .style('font-size', d => {
+            const w = d.x1 - d.x0;
+            if (mobile) return w > 60 ? '0.58rem' : '0.48rem';
+            return w > 80 ? '0.72rem' : '0.6rem';
+          })
+          .attr('x', d => d.x0 + (mobile ? 3 : 4))
+          .attr('y', d => d.y0 + (d.y1 - d.y0) / 2 + (mobile ? 3 : 4))
+          .text(_leafLabelText),
+        update => update
+          .call(u => u.transition().duration(T)
+            .attr('x', d => d.x0 + (mobile ? 3 : 4))
+            .attr('y', d => d.y0 + (d.y1 - d.y0) / 2 + (mobile ? 3 : 4)))
+          .style('font-size', d => {
+            const w = d.x1 - d.x0;
+            if (mobile) return w > 60 ? '0.58rem' : '0.48rem';
+            return w > 80 ? '0.72rem' : '0.6rem';
+          })
+          .text(_leafLabelText),
+        exit => exit.remove()
+      );
   },
 
   destroy() {
@@ -764,9 +819,9 @@ const TreemapRenderer = {
 
 const LEGENDS = {
   treemap: `
-    <span><i class="dot" style="background:#5a7a4f"></i> Demonstrated</span>
-    <span><i class="dot" style="background:#9e9890"></i> Claimed</span>
-    <span><i class="dot" style="background:#c4756a"></i> Gap</span>
+    <span><i class="dot" style="background:#4a7856"></i> Demonstrated</span>
+    <span><i class="dot" style="background:#9a9590"></i> Claimed</span>
+    <span><i class="dot" style="background:#b35a52"></i> Gap</span>
     <span class="legend-note">Tile size = evidence count</span>
   `,
   exhibits: null, // built dynamically by repo-tiles.js
