@@ -977,11 +977,6 @@ function hideMobileChat() {
   // graph-filter visibility managed by updateFilterBar
 }
 
-function syncToggle(mode) {
-  document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
-    btn.classList.toggle('viz-toggle__btn--active', btn.dataset.mode === mode);
-  });
-}
 
 /* ── Mode switching ────────────────────────────────────────── */
 
@@ -989,7 +984,7 @@ function switchMode(mode) {
   // Chat tab (mobile only — DOM relocation)
   if (mode === 'chat' && isMobile) {
     showMobileChat();
-    syncToggle('chat');
+
     return;
   }
 
@@ -1005,7 +1000,7 @@ function switchMode(mode) {
     if (graphEl) graphEl.style.display = 'none';
     if (filterEl) filterEl.style.display = 'none';
     activeMode = mode;
-    syncToggle(mode);
+
     if (window.buildExhibitsLegend) window.buildExhibitsLegend();
     return;
   }
@@ -1019,7 +1014,7 @@ function switchMode(mode) {
     activeMode = mode;
     if (renderers[mode]) renderers[mode].init(svg, dims);
   }
-  syncToggle(mode);
+
   updateLegend(mode);
   measureDims();
   if (!state.empty && renderers[mode]) renderers[mode].render(getViewState(), dims);
@@ -1034,9 +1029,6 @@ function renderCurrent() {
   r.render(viewState, dims);
 }
 
-document.querySelectorAll('.viz-toggle__btn').forEach(btn => {
-  btn.addEventListener('click', () => switchMode(btn.dataset.mode));
-});
 
 new ResizeObserver(() => {
   measureDims();
@@ -1044,7 +1036,7 @@ new ResizeObserver(() => {
 }).observe(document.getElementById('graph-container'));
 
 initSVG();
-syncToggle(isMobile ? 'chat' : activeMode);
+
 updateLegend(activeMode);
 // On desktop, start in exhibits mode — hide graph-container, show exhibits
 if (!isMobile) {
@@ -1059,9 +1051,8 @@ window.updateGraph = function (data) {
   state.update(data);
   const empty = document.querySelector('.graph-empty');
   if (empty && !state.empty) empty.style.display = 'none';
-  const howto = document.getElementById('graph-howto');
-  if (howto && !state.empty) howto.classList.add('graph-howto--hidden');
-  // Auto-switch to treemap on first graph data
+  const intro = document.getElementById('workshop-intro');
+  if (intro && !state.empty) intro.classList.add('workshop-intro--hidden');
   if (wasEmpty && !state.empty && activeMode === 'exhibits') {
     switchMode('treemap');
   }

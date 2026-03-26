@@ -139,26 +139,17 @@
     </div>
 
     <section id="graph-panel" aria-label="Skills visualization">
-      <div class="viz-toggle" role="tablist" aria-label="Visualization type">
-        <button class="viz-toggle__btn viz-toggle__btn--mobile-only" data-mode="chat">Chat</button>
-        <button class="viz-toggle__btn" data-mode="treemap">Treemap</button>
-        <button class="viz-toggle__btn" data-mode="exhibits">Exhibits</button>
-      </div>
       <div class="graph-filter" id="graph-filter"></div>
       <div class="exhibits-container" id="exhibits-container">
-        <div class="graph-howto" id="graph-howto">
-          <h2 class="graph-howto__title">How it works</h2>
-          <ol class="graph-howto__steps">
-            <li><strong>Browse the exhibits</strong> — hover a donut to see its skill breakdown, click to view the repo and links to real code on GitHub</li>
-            <li><strong>Ask a question</strong> — type anything about skills, projects, or experience in the chat</li>
-            <li><strong>Watch the agent think</strong> — it searches real code, traces connections, and gathers evidence</li>
-            <li><strong>Explore the graph</strong> — a skill treemap builds as you chat, with clickable tiles linking to actual code</li>
+        <div class="workshop-intro" id="workshop-intro">
+          <h2 class="workshop-intro__title">The Workshop</h2>
+          <ol class="workshop-intro__steps">
+            <li><strong>Browse</strong> — hover &amp; click the rings</li>
+            <li><strong>Ask</strong> — type anything in the chat</li>
+            <li><strong>Watch</strong> — the agent searches real code</li>
+            <li><strong>Explore</strong> — a skill graph builds live</li>
           </ol>
-          <p class="graph-howto__hint">Try a starter question on the left, or upload a job description to see a skill match report.</p>
-        </div>
-        <div class="exhibits-header">
-          <h2 class="exhibits-header__title">The Workshop</h2>
-          <p class="exhibits-header__subtitle">Each ring maps a project's skill composition — hover to inspect, click to examine the evidence.</p>
+          <p class="workshop-intro__subtitle">Each ring maps a project's skill composition — hover to inspect, click to examine.</p>
         </div>
         <div class="carousel-wrap">
           <div class="exhibits-carousel" id="exhibits-carousel"></div>
