@@ -13,9 +13,9 @@
   const PAGE_SIZE = 5;
   const snippetCache = new Map();
 
-  const SIZE = 84;
+  const SIZE = 110;
   const OUTER = SIZE / 2 - 6;
-  const INNER = OUTER - 11;
+  const INNER = OUTER - 14;
   const EXP_SIZE = 200;
   const EXP_OUTER = EXP_SIZE / 2 - 4;
   const EXP_INNER = EXP_OUTER - 22;
@@ -452,6 +452,59 @@
   let totalPages = 1;
   let allTilesArr = [];
 
+  /** Gap between arrows and tiles: scales with carousel width, clamped for tiny/large viewports. */
+  function scaledArrowGapPx(wrapWidth) {
+    const w = wrapWidth > 0 ? wrapWidth : (typeof window !== 'undefined' ? window.innerWidth : 16);
+    return Math.round(Math.min(24, Math.max(8, w * 0.022)));
+  }
+
+  function updateArrowPositions() {
+    // Only the desktop exhibits carousel uses arrows.
+    const wrap = CAROUSEL?.parentNode;
+    if (!wrap) return;
+
+    const prev = wrap.querySelector('.carousel-arrow--prev');
+    const next = wrap.querySelector('.carousel-arrow--next');
+    if (!prev || !next) return;
+
+    // If the carousel is hidden (responsive), skip positioning.
+    const wrapRect = wrap.getBoundingClientRect();
+    if (!wrapRect.width) return;
+
+    // showPage() controls visibility via `style.display = 'none'` for non-visible tiles.
+    const visibleTiles = allTilesArr.filter(t => t.style.display !== 'none' && t.getClientRects().length);
+    if (!visibleTiles.length) return;
+
+    const firstRect = visibleTiles[0].getBoundingClientRect();
+    const lastRect = visibleTiles[visibleTiles.length - 1].getBoundingClientRect();
+
+    // Read arrow sizes from the DOM so we don't hardcode anything fragile.
+    const prevRect = prev.getBoundingClientRect();
+    const nextRect = next.getBoundingClientRect();
+    const prevHalfW = prevRect.width ? prevRect.width / 2 : 14;
+    const nextHalfW = nextRect.width ? nextRect.width / 2 : 14;
+
+    const gap = scaledArrowGapPx(wrapRect.width);
+    // Target: center arrow next to the right edge of the last visible tile, etc.
+    const nextCenterX = lastRect.right + gap;
+    const prevCenterX = firstRect.left - gap;
+
+    let nextLeft = nextCenterX - nextHalfW - wrapRect.left;
+    let prevLeft = prevCenterX - prevHalfW - wrapRect.left;
+
+    // Clamp to wrapper bounds to avoid arrows spilling outside on small widths.
+    const nextMaxLeft = wrapRect.width - nextRect.width;
+    const prevMaxLeft = wrapRect.width - prevRect.width;
+    nextLeft = Math.max(0, Math.min(nextMaxLeft, nextLeft));
+    prevLeft = Math.max(0, Math.min(prevMaxLeft, prevLeft));
+
+    // Override the CSS `left/right` defaults with inline positioning.
+    next.style.right = 'auto';
+    next.style.left = `${nextLeft}px`;
+    prev.style.right = 'auto';
+    prev.style.left = `${prevLeft}px`;
+  }
+
   function showPage(page) {
     currentPage = Math.max(0, Math.min(totalPages - 1, page));
     const start = currentPage * PAGE_SIZE;
@@ -459,17 +512,29 @@
       t.style.display = (i >= start && i < start + PAGE_SIZE) ? '' : 'none';
     });
     updateNav();
+    updateArrowPositions();
+  }
+
+  /** Wrap to previous/next page (bidirectional carousel). */
+  function navigateCarousel(delta) {
+    if (totalPages <= 1) return;
+    let target = currentPage + delta;
+    if (target < 0) target = totalPages - 1;
+    else if (target >= totalPages) target = 0;
+    showPage(target);
   }
 
   function updateNav() {
-    if (!DOTS) return;
-    DOTS.querySelectorAll('.carousel-dot').forEach((d, i) => {
-      d.classList.toggle('carousel-dot--active', i === currentPage);
-    });
+    if (DOTS) {
+      DOTS.querySelectorAll('.carousel-dot').forEach((d, i) => {
+        d.classList.toggle('carousel-dot--active', i === currentPage);
+      });
+    }
     const prev = CAROUSEL.parentNode.querySelector('.carousel-arrow--prev');
     const next = CAROUSEL.parentNode.querySelector('.carousel-arrow--next');
-    if (prev) prev.disabled = currentPage === 0;
-    if (next) next.disabled = currentPage >= totalPages - 1;
+    // Bidirectional: arrows always active when multiple pages exist.
+    if (prev) prev.disabled = false;
+    if (next) next.disabled = false;
   }
 
   function buildNav() {
@@ -478,13 +543,13 @@
     const prev = document.createElement('button');
     prev.className = 'carousel-arrow carousel-arrow--prev';
     prev.textContent = '\u2039';
-    prev.addEventListener('click', () => showPage(currentPage - 1));
+    prev.addEventListener('click', () => navigateCarousel(-1));
     wrap.insertBefore(prev, CAROUSEL);
 
     const next = document.createElement('button');
     next.className = 'carousel-arrow carousel-arrow--next';
     next.textContent = '\u203A';
-    next.addEventListener('click', () => showPage(currentPage + 1));
+    next.addEventListener('click', () => navigateCarousel(1));
     wrap.appendChild(next);
 
     if (DOTS) {
@@ -496,6 +561,16 @@
       }
     }
   }
+
+  // Keep arrow placement in sync with layout changes.
+  let resizeRaf = 0;
+  window.addEventListener('resize', () => {
+    if (resizeRaf) return;
+    resizeRaf = window.requestAnimationFrame(() => {
+      resizeRaf = 0;
+      updateArrowPositions();
+    });
+  });
 
   /* ── Init: fetch and distribute tiles ──────────── */
 

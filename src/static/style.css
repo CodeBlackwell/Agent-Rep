@@ -658,6 +658,26 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 .exhibits-container > * { pointer-events: auto; }
 .exhibits-container--hidden { display: none; }
 
+.exhibits-header {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 1rem 1.5rem 0.25rem;
+}
+.exhibits-header__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.2rem, 3cqi, 1.6rem);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  margin: 0 0 0.25rem;
+}
+.exhibits-header__subtitle {
+  font-size: 0.72rem;
+  color: var(--ink-light);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
 /* Horizontal carousel: paginated project tiles */
 .carousel-wrap {
   position: relative;
@@ -698,8 +718,8 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .carousel-arrow:hover { background: rgba(234, 213, 182, 0.85); color: var(--ink); }
-.carousel-arrow--prev { left: 0.3rem; }
-.carousel-arrow--next { right: 0.3rem; }
+.carousel-arrow--prev { left: 1.5rem; }
+.carousel-arrow--next { right: 1.5rem; }
 .carousel-arrow:disabled { opacity: 0; pointer-events: none; }
 .carousel-dots {
   display: flex;
@@ -753,7 +773,7 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 90px;
+  width: 140px;
   cursor: pointer;
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
               opacity 0.3s ease, filter 0.3s ease;
@@ -771,8 +791,8 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .repo-tile__ring {
   display: block;
-  width: 72px;
-  height: 72px;
+  width: 120px;
+  height: 120px;
   transition: filter 0.3s ease;
 }
 
@@ -782,15 +802,15 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .repo-tile__name {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--ink-light);
-  margin-top: 0.2rem;
+  margin-top: 0.35rem;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 90px;
+  max-width: 140px;
 }
 
 /* ── Expanded repo detail overlay ──────────────── */
@@ -1035,15 +1055,15 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 /* Exhibits carousel: responsive cascade */
 @media (max-width: 1440px) {
-  .exhibits-carousel .repo-tile { width: 70px; }
-  .exhibits-carousel .repo-tile__ring { width: 56px; height: 56px; }
-  .exhibits-carousel .repo-tile__name { font-size: 0.55rem; max-width: 70px; }
+  .exhibits-carousel .repo-tile { width: 115px; }
+  .exhibits-carousel .repo-tile__ring { width: 96px; height: 96px; }
+  .exhibits-carousel .repo-tile__name { font-size: 0.68rem; max-width: 115px; }
 }
 @media (max-width: 1200px) {
   .exhibits-carousel { gap: 1rem; padding: 0.75rem 1.5rem; }
-  .exhibits-carousel .repo-tile { width: 60px; }
-  .exhibits-carousel .repo-tile__ring { width: 48px; height: 48px; }
-  .exhibits-carousel .repo-tile__name { font-size: 0.5rem; max-width: 60px; }
+  .exhibits-carousel .repo-tile { width: 100px; }
+  .exhibits-carousel .repo-tile__ring { width: 82px; height: 82px; }
+  .exhibits-carousel .repo-tile__name { font-size: 0.62rem; max-width: 100px; }
 }
 @media (max-width: 1024px) { .exhibits-container { display: none; } .repo-detail { display: none; } }
 
@@ -1349,14 +1369,14 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 /* ── Graph how-to (flex child of .exhibits-sides) ── */
 .graph-howto {
-  flex: 1;
+  flex: 3;
   min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: clamp(1rem, 3.5cqi, 1.8rem) clamp(1.2rem, 4cqi, 2rem);
+  padding: 0 clamp(1.2rem, 4cqi, 2rem);
   color: var(--ink-light);
   text-shadow: 0 1px 6px rgba(245, 240, 235, 0.8);
   transition: opacity 0.5s ease, transform 0.5s ease;

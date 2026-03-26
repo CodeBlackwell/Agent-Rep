@@ -851,7 +851,6 @@ window.buildExhibitsLegend = function () {
   }
   el.innerHTML =
     '<div class="exhibits-legend">' +
-      '<span class="exhibits-legend__label">Skill Domains</span>' +
       '<div class="exhibits-legend__items">' + items + '</div>' +
     '</div>';
 };
