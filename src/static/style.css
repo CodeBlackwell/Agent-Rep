@@ -780,7 +780,7 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 }
 
 .repo-tile--hover {
-  transform: scale(1.5);
+  transform: scale(1.25);
   z-index: 10;
 }
 
