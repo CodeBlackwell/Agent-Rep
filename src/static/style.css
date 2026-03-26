@@ -666,9 +666,9 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 .exhibits-header__title {
   font-family: 'Cormorant Garamond', serif;
   font-size: clamp(1.2rem, 3cqi, 1.6rem);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   margin: 0 0 0.25rem;
 }
 .exhibits-header__subtitle {
@@ -802,9 +802,10 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 
 .repo-tile__name {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--ink-light);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--ink);
   margin-top: 0.35rem;
   text-align: center;
   white-space: nowrap;
