@@ -260,12 +260,12 @@ REPO_BREAKDOWNS = {
                    "Specialized agents seamlessly integrate their capabilities to deconstruct and resolve intricate challenges.",
         "stack": ["Python", "Redis", "Pinecone", "MCP", "Linear API"],
     },
-    "schemancer": {
+    "kata": {
         "tagline": "Declarative Schema Engine",
         "summary": "Schema definition and validation library with a live playground demo. "
                    "Define data shapes declaratively and generate validators, migrations, and documentation from a single source.",
         "stack": ["Python", "FastAPI", "D3.js", "CodeMirror"],
-        "url": "https://schemancer.codeblackwell.ai",
+        "url": "https://kata.codeblackwell.ai",
     },
     "veridatum": {
         "tagline": "Cross-Source DataFrame Comparison Library",

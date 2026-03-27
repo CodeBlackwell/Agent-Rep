@@ -2,6 +2,17 @@
 
 All notable changes to PROVE are documented here.
 
+## [0.9.2] — 2026-03-26
+
+### Changed
+- **Workshop intro rewrite** — replaced numbered step list with flowing Cormorant Garamond prose; reads like a craftsperson's inscription, not a product tour
+- Diamond ornament separator between title and body text
+- All workshop text now in serif (Cormorant Garamond) for cohesive voice
+- Warmer brown palette across workshop intro (`#5a4a3a` body, `#3d2e1e` title, `--accent` CTA)
+- Staggered fade-in reveal on workshop elements matching hero animation pattern
+- Increased donut tile canvas from 110px to 126px (+15%)
+- Larger font sizes and more generous line spacing throughout workshop section
+
 ## [0.9.1] — 2026-03-25
 
 ### Changed

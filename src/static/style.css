@@ -660,44 +660,46 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 }
 .workshop-intro__title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(1.2rem, 3cqi, 1.6rem);
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: 0.06em;
-  margin: 0 0 0.3rem;
-}
-.workshop-intro__steps {
-  list-style: none;
-  counter-reset: howto;
-  padding: 0;
-  margin: 0 auto 0.2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-}
-.workshop-intro__steps li {
-  counter-increment: howto;
-  font-size: clamp(0.65rem, 1.6cqi, 0.78rem);
-  color: var(--ink-light);
-  line-height: 1.35;
-  white-space: nowrap;
-}
-.workshop-intro__steps li::before {
-  content: counter(howto) ". ";
-  color: var(--accent);
+  font-size: clamp(1.6rem, 3.8cqi, 2.2rem);
   font-weight: 600;
+  color: #3d2e1e;
+  letter-spacing: 0.12em;
+  margin: 0;
+  opacity: 0; animation: ws-reveal 0.6s ease forwards 0.3s;
 }
-.workshop-intro__steps li strong {
-  color: var(--ink);
-  font-weight: 600;
+.workshop-intro__ornament {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--stone);
+  margin: 0.6rem 0 1rem;
+  letter-spacing: 0.3em;
+  opacity: 0; animation: ws-reveal 0.5s ease forwards 0.55s;
 }
-.workshop-intro__subtitle {
-  font-size: 0.68rem;
-  color: var(--ink-faint);
-  margin: 0.15rem 0 0;
-  letter-spacing: 0.01em;
+.workshop-intro__body {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1rem, 2.4cqi, 1.2rem);
+  font-weight: 400;
+  color: #5a4a3a;
+  line-height: 1.9;
+  max-width: 32ch;
+  margin: 0 auto 0.8rem;
+  opacity: 0;
+}
+.workshop-intro__body:nth-of-type(2) { animation: ws-reveal 0.55s ease forwards 0.8s; }
+.workshop-intro__body:nth-of-type(3) { animation: ws-reveal 0.55s ease forwards 1.15s; }
+.workshop-intro__cta {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(0.92rem, 2.1cqi, 1.1rem);
   font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  margin: 0.6rem 0 0;
+  opacity: 0; animation: ws-reveal 0.5s ease forwards 1.5s;
+}
+@keyframes ws-reveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Horizontal carousel: paginated project tiles */
@@ -803,7 +805,7 @@ body.canvas-mode .site-credit a { color: rgba(234, 213, 182, 0.8); }
 }
 
 .repo-tile--hover {
-  transform: scale(1.25);
+  transform: scale(1.15);
   z-index: 10;
 }
 

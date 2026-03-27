@@ -13,7 +13,7 @@
   const PAGE_SIZE = 5;
   const snippetCache = new Map();
 
-  const SIZE = 110;
+  const SIZE = 126;
   const OUTER = SIZE / 2 - 6;
   const INNER = OUTER - 14;
   const EXP_SIZE = 200;
