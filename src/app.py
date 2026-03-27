@@ -34,6 +34,7 @@ def _static_hash() -> str:
     return h.hexdigest()[:8]
 
 STATIC_V = _static_hash()
+DEV_MODE = os.getenv("DEV_MODE", "").lower() in ("1", "true", "yes")
 
 # Cypher fragment: exclude static/generated assets from snippet queries
 _SKIP_ASSET_PATHS = (
@@ -134,6 +135,7 @@ def index(request: Request):
         "github_owner": settings.github_owner,
         "cdn_base": settings.cdn_base,
         "static_v": STATIC_V,
+        "dev_mode": DEV_MODE,
     })
 
 
@@ -599,7 +601,7 @@ def skill_page(request: Request, skill_slug: str):
 
     if not meta:
         return templates.TemplateResponse("skill.html", {
-            "request": request, "skill": None, "cdn_base": settings.cdn_base, "static_v": STATIC_V,
+            "request": request, "skill": None, "cdn_base": settings.cdn_base, "static_v": STATIC_V, "dev_mode": DEV_MODE,
         }, status_code=404)
 
     with neo4j.driver.session() as s:
@@ -643,6 +645,7 @@ def skill_page(request: Request, skill_slug: str):
         "cdn_base": settings.cdn_base,
         "static_v": STATIC_V,
         "github_owner": settings.github_owner,
+        "dev_mode": DEV_MODE,
     })
 
 

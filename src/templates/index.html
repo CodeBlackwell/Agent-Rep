@@ -82,9 +82,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
 
-  <link rel="preload" href="{{ cdn_base }}/static/style.min.css?v={{ static_v }}" as="style" />
+  {% set sfx = "" if dev_mode else ".min" %}
+  <link rel="preload" href="{{ cdn_base }}/static/style{{ sfx }}.css?v={{ static_v }}" as="style" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css" />
-  <link rel="stylesheet" href="{{ cdn_base }}/static/style.min.css?v={{ static_v }}">
+  <link rel="stylesheet" href="{{ cdn_base }}/static/style{{ sfx }}.css?v={{ static_v }}">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
 </head>
 <body class="is-loading">
@@ -167,11 +168,11 @@
   <script>window.__GITHUB_OWNER__ = "{{ github_owner }}";window.__ENGINEER_NAME__ = "{{ name }}";</script>
   <script defer src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
   <script defer src="{{ cdn_base }}/static/d3.custom.min.js?v={{ static_v }}"></script>
-  <script defer src="{{ cdn_base }}/static/fingerprint.min.js?v={{ static_v }}"></script>
-  <script defer src="{{ cdn_base }}/static/graph.min.js?v={{ static_v }}"></script>
-  <script defer src="{{ cdn_base }}/static/repo-tiles.min.js?v={{ static_v }}"></script>
-  <script defer src="{{ cdn_base }}/static/chat.min.js?v={{ static_v }}"></script>
-  <script defer src="{{ cdn_base }}/static/jd.min.js?v={{ static_v }}"></script>
+  <script defer src="{{ cdn_base }}/static/fingerprint{{ sfx }}.js?v={{ static_v }}"></script>
+  <script defer src="{{ cdn_base }}/static/graph{{ sfx }}.js?v={{ static_v }}"></script>
+  <script defer src="{{ cdn_base }}/static/repo-tiles{{ sfx }}.js?v={{ static_v }}"></script>
+  <script defer src="{{ cdn_base }}/static/chat{{ sfx }}.js?v={{ static_v }}"></script>
+  <script defer src="{{ cdn_base }}/static/jd{{ sfx }}.js?v={{ static_v }}"></script>
   <script>
     (function() {
       const bg = new Image();

@@ -12,7 +12,7 @@ dev:
     @echo "Starting Neo4j..."
     @docker compose up -d --wait || echo "⚠ Neo4j failed to start — is Docker running?"
     @echo "Neo4j ready."
-    CHAT_PROVIDER=anthropic EMBED_PROVIDER=voyage uv run uvicorn src.app:app --port 7860 --reload
+    DEV_MODE=1 CHAT_PROVIDER=anthropic EMBED_PROVIDER=voyage uv run uvicorn src.app:app --port 7860 --reload
 
 optimize-svg:
     bash scripts/optimize-svg.sh
